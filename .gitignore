@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+
+# Secrets / environment
+.env
+.env.*
+!.env.example
+!.env.production.example
+portal/.env
+api-server/.env
+api-server/service-account.json
+api-server/service-account.json.bak
+api-server/cloudrun.env.yaml
+
+# Build outputs
+portal/release/
+portal/dist-website/
+api-server/dist/
+api-server/.tsbuildinfo
+portal/.tsbuildinfo
+scripts/dist/
+
+# Logs
+*.log
+dev-out.log
+dev-err.log
+
+# Firebase
+.firebase/
+
+# Tool configs
+.claude/
+.kimchi/
+.opencode/
+
+# Misc
+uploads/
+error/
+C?/
+kimi_cli.py
+
+# OS / editor
+.DS_Store
+Thumbs.db

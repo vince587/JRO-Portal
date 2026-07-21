@@ -1,0 +1,10 @@
+<svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background shield shape -->
+  <rect width="180" height="180" rx="36" fill="#1e3a5f"/>
+  
+  <!-- Inner "IP" text -- Internal Portal -->
+  <text x="90" y="105" font-family="Inter, Arial, sans-serif" font-weight="700" font-size="72" text-anchor="middle" fill="#ffffff" letter-spacing="-2">IP</text>
+  
+  <!-- Small decorative line under the text -->
+  <rect x="45" y="125" width="90" height="4" rx="2" fill="#4a90d9"/>
+</svg>

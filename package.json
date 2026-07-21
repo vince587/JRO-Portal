@@ -1,0 +1,14 @@
+{
+  "name": "jmcs",
+  "private": true,
+  "scripts": {
+    "postinstall": "cd portal && npm install && cd ../api-server && npm install",
+    "dev": "npx concurrently -n api,portal -c blue,green \"cd api-server && npm run dev\" \"cd portal && npm run dev\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  },
+  "dependencies": {
+    "xlsx": "^0.18.5"
+  }
+}

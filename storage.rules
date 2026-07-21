@@ -1,0 +1,38 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Helper: check if the requester is authenticated
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    // ── Avatars ────────────────────────────────────────────────────
+    // Any authenticated user can read any avatar.
+    // A user can write/delete their own avatar.
+    match /avatars/{userId}/{fileName} {
+      allow read: if isAuth();
+      allow write: if isAuth() && request.auth.uid == userId;
+    }
+
+    // ── Certificates ───────────────────────────────────────────────
+    // Authenticated users can read certificate files. A user may only write
+    // their own certificate file (fileName == their uid) or an admin.
+    function isAdmin() {
+      return isAuth()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'ADMIN', 'IT'];
+    }
+    match /certificates/{fileName} {
+      allow read: if isAuth();
+      allow write: if isAuth() && (fileName == request.auth.uid || isAdmin());
+    }
+
+    // ── Employees ──────────────────────────────────────────────────
+    // Authenticated users can read employee files. A user may only write
+    // their own employee file (fileName == their uid) or an admin.
+    match /employees/{fileName} {
+      allow read: if isAuth();
+      allow write: if isAuth() && (fileName == request.auth.uid || isAdmin());
+    }
+  }
+}

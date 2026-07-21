@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Export old certificates to JSON</title>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+  <style>
+    body { font-family: Arial; padding: 20px; }
+    #output { width: 100%; height: 500px; font-family: monospace; font-size: 12px; }
+    .count { font-weight: bold; }
+    button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+    .error { color: red; }
+    .success { color: green; }
+  </style>
+</head>
+<body>
+  <h1>🔐 Certificate Export — vince-project-88c41</h1>
+  <p>Connect to the old Firebase project and export all certificates as JSON.</p>
+  
+  <div id="auth-status">Checking authentication...</div>
+  <div id="cert-count" class="count">0 certificates found</div>
+  <pre id="output"></pre>
+  <button id="download-btn" disabled onclick="downloadJson()">⬇️ Download as JSON</button>
+  <button id="copy-btn" disabled onclick="copyToClipboard()">📋 Copy to clipboard</button>
+  <p id="status"></p>
+
+  <script>
+    // --- Old Firebase Config (from your reference HTML) ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyBOHfP3BGJGfnJq4FvLIgg-7pO77QCfOYI",
+      authDomain: "vince-project-88c41.firebaseapp.com",
+      projectId: "vince-project-88c41",
+      storageBucket: "vince-project-88c41.firebasestorage.app",
+      messagingSenderId: "45601787434",
+      appId: "1:45601787434:web:4acd3585f8de6b0c163d53",
+    };
+
+    // Initialize Firebase — this is the OLD project
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    let allCertificates = [];
+
+    async function exportCertificates() {
+      document.getElementById('status').textContent = '⏳ Loading certificates from Firestore...';
+      document.getElementById('status').className = '';
+
+      try {
+        // Check if user is authenticated (optional — for read-all access)
+        // If your Firestore rules require auth, log in first.
+        // For now, we try without auth (public read rules).
+        
+        const snapshot = await db.collection('certificates')
+          .orderBy('dateIssued', 'desc')
+          .get();
+
+        document.getElementById('status').textContent = '';
+
+        if (snapshot.empty) {
+          document.getElementById('cert-count').textContent = '0 certificates — nothing to export';
+          document.getElementById('output').textContent = '[]';
+          return;
+        }
+
+        const certificates = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+
+        allCertificates = certificates;
+
+        document.getElementById('cert-count').textContent = `${certificates.length} certificates found`;
+        document.getElementById('output').textContent = JSON.stringify(certificates, null, 2);
+        document.getElementById('output').style.color = '#000';
+        document.getElementById('download-btn').disabled = false;
+        document.getElementById('copy-btn').disabled = false;
+        document.getElementById('status').textContent = '✅ Export complete!';
+        document.getElementById('status').className = 'success';
+
+      } catch (error) {
+        document.getElementById('status').textContent = `❌ Error: ${error.message}`;
+        document.getElementById('status').className = 'error';
+        document.getElementById('output').textContent = `// Error: ${error.message}\n// Try logging in with a valid user first`;
+      }
+    }
+
+    function downloadJson() {
+      if (allCertificates.length === 0) return;
+      const json = JSON.stringify(allCertificates, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `old-certificates-${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function copyToClipboard() {
+      const text = document.getElementById('output').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        document.getElementById('status').textContent = '✅ Copied to clipboard!';
+      });
+    }
+
+    exportCertificates();
+  </script>
+</body>
+</html>

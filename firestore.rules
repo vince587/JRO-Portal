@@ -1,0 +1,107 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper: check if the requester is authenticated
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    // Helper: check if the requester is an admin
+    function isAdmin() {
+      return isAuth()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Helper: check if the requester owns the document
+    function isOwner(userId) {
+      return isAuth() && request.auth.uid == userId;
+    }
+
+    // ── Users ──────────────────────────────────────────────────────
+    // Any authenticated user can read all users.
+    // A user can write their own doc; admins can write any user doc.
+    match /users/{userId} {
+      allow read: if isAuth();
+      allow create: if isAuth();
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── Contracts ──────────────────────────────────────────────────
+    // Any authenticated user can CRUD.
+    match /contracts/{docId} {
+      allow read: if isAuth();
+      allow create: if isAuth();
+      allow update: if isAuth();
+      allow delete: if isAdmin();
+    }
+
+    // ── Certificates ───────────────────────────────────────────────
+    // Any authenticated user can CRUD.
+    match /certificates/{docId} {
+      allow read: if isAuth();
+      allow create: if isAuth();
+      allow update: if isAuth();
+      allow delete: if isAdmin();
+    }
+
+    // ── Projects ───────────────────────────────────────────────────
+    // Any authenticated user can CRUD.
+    match /projects/{docId} {
+      allow read: if isAuth();
+      allow create: if isAuth();
+      allow update: if isAuth();
+      allow delete: if isAdmin();
+    }
+
+    // ── Events ─────────────────────────────────────────────────────
+    // Authenticated users can read all events.
+    // Only users with canEditCalendar permission can create/update.
+    // Only admins can delete.
+    match /events/{docId} {
+      allow read: if isAuth();
+      allow create: if isAuth()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.canEditCalendar == true;
+      allow update: if isAuth()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.canEditCalendar == true;
+      allow delete: if isAdmin();
+    }
+
+    // ── Tasks ──────────────────────────────────────────────────────
+    // Any authenticated user can CRUD.
+    match /tasks/{docId} {
+      allow read: if isAuth();
+      allow create: if isAuth();
+      allow update: if isAuth();
+      allow delete: if isAdmin();
+    }
+
+    // ── Leads ──────────────────────────────────────────────────────
+    // Users can only read their own leads. Admins/managers can read all.
+    // A lead can be created by any authenticated user.
+    // Only the creator or an admin/manager can update/delete.
+    match /leads/{docId} {
+      function isAdminOrManager() {
+        return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'manager'];
+      }
+      allow read: if isAuth()
+        && (resource.data.createdById == request.auth.uid || isAdminOrManager());
+      allow create: if isAuth();
+      allow update: if isAuth()
+        && (resource.data.createdById == request.auth.uid || isAdminOrManager());
+      allow delete: if isAuth()
+        && (resource.data.createdById == request.auth.uid || isAdminOrManager());
+    }
+
+    // ── Activity ───────────────────────────────────────────────────
+    // Any authenticated user can read/write activity logs.
+    // Only admins can delete.
+    match /activity/{docId} {
+      allow read: if isAuth();
+      allow create: if isAuth();
+      allow update: if isAuth();
+      allow delete: if isAdmin();
+    }
+  }
+}

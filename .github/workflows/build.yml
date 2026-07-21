@@ -1,0 +1,194 @@
+# CI workflow: builds the Electron desktop app for Windows and macOS,
+# then deploys the web portal + installers to Firebase Hosting.
+#
+# Mac builds REQUIRE a macOS runner (generates .icns, signs, produces .dmg).
+# Windows builds run on a Windows runner (produces NSIS .exe).
+#
+# Required repository secrets:
+#   FIREBASE_TOKEN  – output of `firebase login:ci` run on a dev machine.
+
+name: Build & Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Prevent overlapping runs on the same branch.
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ──────────────────────────────────────────────
+  # 1. Build Windows installer (.exe)
+  # ──────────────────────────────────────────────
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: portal/package-lock.json
+
+      - name: Install portal dependencies
+        working-directory: portal
+        run: npm ci
+
+      - name: Install api-server dependencies
+        working-directory: api-server
+        run: npm ci
+
+      - name: Build api-server
+        working-directory: api-server
+        run: node build.mjs
+
+      - name: Build Vite bundle (Electron)
+        working-directory: portal
+        run: npx vite build --config vite.electron.config.ts
+
+      - name: Build Windows installer
+        working-directory: portal
+        run: npx electron-builder --win --publish never
+
+      - name: Copy installer to downloads/
+        working-directory: portal
+        run: node scripts/copy-installer.cjs
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: |
+            portal/release/*.exe
+            portal/release/*.blockmap
+            portal/release/latest.yml
+            portal/dist-website/downloads/*
+          retention-days: 30
+
+  # ──────────────────────────────────────────────
+  # 2. Build macOS installer (.dmg)
+  # ──────────────────────────────────────────────
+  build-mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: portal/package-lock.json
+
+      - name: Install portal dependencies
+        working-directory: portal
+        run: npm ci
+
+      - name: Install api-server dependencies
+        working-directory: api-server
+        run: npm ci
+
+      - name: Build api-server
+        working-directory: api-server
+        run: node build.mjs
+
+      - name: Build Vite bundle (Electron)
+        working-directory: portal
+        run: npx vite build --config vite.electron.config.ts
+
+      # Generate .icns from logo.png using macOS-native tools.
+      # Requires logo.png in portal/public/ (at least 512×512 recommended).
+      - name: Generate .icns icon
+        working-directory: portal
+        run: |
+          set -euo pipefail
+
+          SRC="public/logo.png"
+          if [ ! -f "$SRC" ]; then
+            echo "::warning::logo.png not found – skipping .icns generation"
+            exit 0
+          fi
+
+          ICONSET="build/icon.iconset"
+          ICNS="build/icon.icns"
+          mkdir -p "$ICONSET"
+
+          # Produce standard iconset sizes from the source PNG
+          for size in 16 32 64 128 256 512; do
+            sips -z $size $size "$SRC" --out "$ICONSET/icon_${size}x${size}.png" >/dev/null
+            double=$((size * 2))
+            sips -z $double $double "$SRC" --out "$ICONSET/icon_${size}x${size}@2x.png" >/dev/null
+          done
+
+          iconutil -c icns "$ICONSET" -o "$ICNS"
+          echo "Generated $ICNS"
+
+          # Copy into public/ so electron-builder can pick it up
+          cp "$ICNS" public/logo.icns
+
+      - name: Build macOS DMG
+        working-directory: portal
+        run: npx electron-builder --mac --publish never
+
+      - name: Copy installer to downloads/
+        working-directory: portal
+        run: node scripts/copy-installer.cjs
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mac-installer
+          path: |
+            portal/release/*.dmg
+            portal/dist-website/downloads/*
+          retention-days: 30
+
+  # ──────────────────────────────────────────────
+  # 3. Deploy web portal + all installers
+  # ──────────────────────────────────────────────
+  deploy:
+    needs: [build-windows, build-mac]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: portal/package-lock.json
+
+      - name: Install portal dependencies
+        working-directory: portal
+        run: npm ci
+
+      - name: Build web portal (Vite)
+        working-directory: portal
+        run: npm run build
+
+      # Download all installer artifacts into the hosting directory
+      - name: Download Windows installer artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-installer
+          path: portal/dist-website/downloads
+
+      - name: Download macOS installer artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: mac-installer
+          path: portal/dist-website/downloads
+
+      - name: List downloads directory
+        run: ls -lh portal/dist-website/downloads/
+
+      - name: Deploy to Firebase Hosting
+        uses: w9jds/firebase-action@master
+        with:
+          args: deploy --only hosting
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}

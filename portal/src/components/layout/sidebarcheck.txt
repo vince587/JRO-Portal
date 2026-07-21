@@ -1,0 +1,65 @@
+
+  portal\src\components\layout\app-layout.tsx:75:  const contractsTitle = hasBoth ? "Contracts" : canSis ? "SIS Contracts" : "JMCS Contracts";
+  portal\src\components\layout\app-layout.tsx:76:
+> portal\src\components\layout\app-layout.tsx:77:  const certsUrl = hasBoth ? "/certificates" : canSis ? "/certificates/iso" : "/certificates/training";
+> portal\src\components\layout\app-layout.tsx:78:  const certsTitle = hasBoth ? "Certificates" : canSis ? "ISO Certificates" : "Training Certificates";
+  portal\src\components\layout\app-layout.tsx:79:
+  portal\src\components\layout\app-layout.tsx:80:  return [
+  portal\src\components\layout\app-layout.tsx:81:    { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  portal\src\components\layout\app-layout.tsx:82:    { title: contractsTitle, url: contractsUrl, icon: FileText },
+  portal\src\components\layout\app-layout.tsx:145:  const notificationIcon = (type: string) => {
+  portal\src\components\layout\app-layout.tsx:146:    switch (type) {
+> portal\src\components\layout\app-layout.tsx:147:      case "certificate_expiring": return <ShieldAlert className="h-4 w-4 text-amber-500 shrink-0" />;
+  portal\src\components\layout\app-layout.tsx:148:      case "contract_ending": return <Clock className="h-4 w-4 text-blue-500 shrink-0" />;
+  portal\src\components\layout\app-layout.tsx:149:      default: return <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />;
+  portal\src\components\layout\app-layout.tsx:150:    }
+  portal\src\components\layout\app-layout.tsx:151:  };
+  portal\src\components\layout\app-layout.tsx:268:                    <DropdownMenuContent side="right" align="start">
+  portal\src\components\layout\app-layout.tsx:269:                      <DropdownMenuItem asChild><a href="/api/reports/contracts" download>Contracts CSV</a></DropdownMenuItem>
+> portal\src\components\layout\app-layout.tsx:270:                      <DropdownMenuItem asChild><a href="/api/reports/certificates" download>Certificates CSV</a></DropdownMenuItem>
+  portal\src\components\layout\app-layout.tsx:271:                      <DropdownMenuItem asChild><a href="/api/reports/projects" download>Projects CSV</a></DropdownMenuItem>
+  portal\src\components\layout\app-layout.tsx:272:                    </DropdownMenuContent>
+  portal\src\components\layout\app-layout.tsx:273:                  </DropdownMenu>
+  portal\src\components\layout\app-layout.tsx:274:                </SidebarMenuButton>
+  portal\src\components\layout\app-layout.tsx:355:  const [searchOpen, setSearchOpen] = useState(false);
+  portal\src\components\layout\app-layout.tsx:356:  const [searchQuery, setSearchQuery] = useState("");
+> portal\src\components\layout\app-layout.tsx:357:  const [searchResults, setSearchResults] = useState<{ contracts: any[]; certificates: any[]; projects: any[]; users: any[] }>({ contracts: [], certificates: [], 
+projects: [], users: [] });
+  portal\src\components\layout\app-layout.tsx:358:  const { toast } = useToast();
+  portal\src\components\layout\app-layout.tsx:359:
+  portal\src\components\layout\app-layout.tsx:360:  useSessionTimeout();
+  portal\src\components\layout\app-layout.tsx:361:
+  portal\src\components\layout\app-layout.tsx:378:
+  portal\src\components\layout\app-layout.tsx:379:  useEffect(() => {
+> portal\src\components\layout\app-layout.tsx:380:    if (!searchQuery.trim()) { setSearchResults({ contracts: [], certificates: [], projects: [], users: [] }); return; }
+  portal\src\components\layout\app-layout.tsx:381:    const timer = setTimeout(async () => {
+  portal\src\components\layout\app-layout.tsx:382:      try {
+  portal\src\components\layout\app-layout.tsx:383:        const res = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`);
+  portal\src\components\layout\app-layout.tsx:384:        if (res.ok) setSearchResults(await res.json());
+  portal\src\components\layout\app-layout.tsx:442:                      <DropdownMenuItem key={n.id} className="p-0" asChild>
+  portal\src\components\layout\app-layout.tsx:443:                        <Link href={n.link} className="flex items-start gap-3 px-3 py-2.5 w-full">
+> portal\src\components\layout\app-layout.tsx:444:                          {n.type === "certificate_expiring" ? (
+  portal\src\components\layout\app-layout.tsx:445:                            <ShieldAlert className={`h-4 w-4 mt-0.5 shrink-0 ${n.severity === "danger" ? "text-red-500" : "text-amber-500"}`} />
+  portal\src\components\layout\app-layout.tsx:446:                          ) : (
+  portal\src\components\layout\app-layout.tsx:447:                            <Clock className={`h-4 w-4 mt-0.5 shrink-0 ${n.severity === "danger" ? "text-red-500" : "text-blue-500"}`} />
+  portal\src\components\layout\app-layout.tsx:448:                          )}
+  portal\src\components\layout\app-layout.tsx:471:
+  portal\src\components\layout\app-layout.tsx:472:      <CommandDialog open={searchOpen} onOpenChange={setSearchOpen}>
+> portal\src\components\layout\app-layout.tsx:473:        <CommandInput placeholder="Search contracts, certificates, projects, people..." value={searchQuery} onValueChange={setSearchQuery} />
+  portal\src\components\layout\app-layout.tsx:474:        <CommandList>
+  portal\src\components\layout\app-layout.tsx:475:          <CommandEmpty>No results found.</CommandEmpty>
+  portal\src\components\layout\app-layout.tsx:476:          {searchResults.contracts.length > 0 && (
+  portal\src\components\layout\app-layout.tsx:477:            <CommandGroup heading="Contracts">
+  portal\src\components\layout\app-layout.tsx:485:            </CommandGroup>
+  portal\src\components\layout\app-layout.tsx:486:          )}
+> portal\src\components\layout\app-layout.tsx:487:          {searchResults.certificates.length > 0 && (
+> portal\src\components\layout\app-layout.tsx:488:            <CommandGroup heading="Certificates">
+> portal\src\components\layout\app-layout.tsx:489:              {searchResults.certificates.map((r: any) => (
+> portal\src\components\layout\app-layout.tsx:490:                <CommandItem key={`cert-${r.id}`} onSelect={() => { setLocation(`/certificates/${r.id}`); setSearchOpen(false); }}>
+  portal\src\components\layout\app-layout.tsx:491:                  <ShieldCheck className="h-4 w-4 mr-2 text-amber-500" />
+  portal\src\components\layout\app-layout.tsx:492:                  <span>{r.title}</span>
+  portal\src\components\layout\app-layout.tsx:493:                  {r.subtitle && <span className="text-xs text-muted-foreground ml-2">({r.subtitle})</span>}
+  portal\src\components\layout\app-layout.tsx:494:                </CommandItem>
+
+
+

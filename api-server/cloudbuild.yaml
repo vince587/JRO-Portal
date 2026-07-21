@@ -1,0 +1,10 @@
+substitutions:
+  _TAG: latest
+steps:
+  - name: "gcr.io/kaniko-project/executor:latest"
+    args:
+      - "--destination=us-central1-docker.pkg.dev/$PROJECT_ID/jmcs-repo/jmcs-api:$_TAG"
+      - "--context=dir:///workspace"
+      - "--dockerfile=Dockerfile"
+options:
+  logging: CLOUD_LOGGING_ONLY
