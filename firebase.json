@@ -17,6 +17,15 @@
         ]
       },
       {
+        "source": "/downloads/*.dmg",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
+      },
+      {
         "source": "/downloads/installer.json",
         "headers": [
           {
