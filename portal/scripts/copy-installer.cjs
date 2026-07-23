@@ -19,6 +19,7 @@ const RELEASE_DIR = path.join(ROOT, "release");
 const DOWNLOADS_DIR = path.join(ROOT, "dist-website", "downloads");
 const MANIFEST_NAME = "installer.json";
 const UPDATE_FEED_NAME = "latest.yml";
+const MAC_UPDATE_FEED_NAME = "latest-mac.yml";
 
 function isWindowsInstaller(filename, fullPath) {
   if (!/\.exe$/i.test(filename)) return false;
@@ -106,10 +107,16 @@ async function main() {
   // Clean stale auto-updater artifacts
   for (const name of fs.readdirSync(DOWNLOADS_DIR)) {
     if (/\.blockmap$/i.test(name)) {
-      const isCurrent = installers.windows && name === `${installers.windows.name}.blockmap`;
-      if (!isCurrent) {
+      const matchesWindows = installers.windows && name === `${installers.windows.name}.blockmap`;
+      const matchesMac = installers.mac && name === `${installers.mac.name}.blockmap`;
+      if (!matchesWindows && !matchesMac) {
         fs.rmSync(path.join(DOWNLOADS_DIR, name), { force: true });
       }
+    }
+    if (name === MAC_UPDATE_FEED_NAME && installers.mac) {
+      // Will be overwritten below if current, so stale check is moot — skip
+    } else if (name === MAC_UPDATE_FEED_NAME) {
+      fs.rmSync(path.join(DOWNLOADS_DIR, name), { force: true });
     }
   }
 
@@ -147,6 +154,18 @@ async function main() {
     const installer = installers.mac;
     const target = path.join(DOWNLOADS_DIR, installer.name);
     fs.copyFileSync(installer.fullPath, target);
+
+    // Copy Mac auto-updater artifacts
+    const macFeedSrc = path.join(RELEASE_DIR, MAC_UPDATE_FEED_NAME);
+    if (fs.existsSync(macFeedSrc)) {
+      fs.copyFileSync(macFeedSrc, path.join(DOWNLOADS_DIR, MAC_UPDATE_FEED_NAME));
+      console.log(`[copy-installer] copied ${MAC_UPDATE_FEED_NAME} -> downloads/`);
+    }
+
+    const macBlockmapSrc = path.join(RELEASE_DIR, `${installer.name}.blockmap`);
+    if (fs.existsSync(macBlockmapSrc)) {
+      fs.copyFileSync(macBlockmapSrc, path.join(DOWNLOADS_DIR, `${installer.name}.blockmap`));
+    }
 
     const size = fs.statSync(target).size;
     manifest.mac = {

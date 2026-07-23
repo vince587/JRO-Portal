@@ -66,7 +66,6 @@ jobs:
             portal/release/*.exe
             portal/release/*.blockmap
             portal/release/latest.yml
-            portal/dist-website/downloads/*
           retention-days: 30
 
   # ──────────────────────────────────────────────
@@ -143,7 +142,6 @@ jobs:
           name: mac-installer
           path: |
             portal/release/*.dmg
-            portal/dist-website/downloads/*
           retention-days: 30
 
   # ──────────────────────────────────────────────
@@ -185,6 +183,37 @@ jobs:
 
       - name: List downloads directory
         run: ls -lh portal/dist-website/downloads/
+
+      - name: Generate merged installer manifest
+        working-directory: portal
+        run: |
+          set -euo pipefail
+          DOWNLOADS="dist-website/downloads"
+          PAYLOAD='{"ts":"'$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)'"}'
+
+          # Windows
+          WIN_EXE=$(ls -t "$DOWNLOADS"/*.exe 2>/dev/null | head -1 || true)
+          if [ -n "$WIN_EXE" ]; then
+            WIN_NAME=$(basename "$WIN_EXE")
+            WIN_SIZE=$(stat -c%s "$WIN_EXE" 2>/dev/null || stat -f%z "$WIN_EXE" 2>/dev/null)
+            WIN_HASH=$(sha256sum "$WIN_EXE" 2>/dev/null | cut -d' ' -f1 || shasum -a 256 "$WIN_EXE" 2>/dev/null | cut -d' ' -f1)
+            PAYLOAD=$(echo "$PAYLOAD" | jq --arg n "$WIN_NAME" --arg s "$WIN_SIZE" --arg h "$WIN_HASH" \
+              '.windows = {name: $n, size: ($s|tonumber), sha256: $h}')
+          fi
+
+          # Mac
+          MAC_DMG=$(ls -t "$DOWNLOADS"/*.dmg 2>/dev/null | head -1 || true)
+          if [ -n "$MAC_DMG" ]; then
+            MAC_NAME=$(basename "$MAC_DMG")
+            MAC_SIZE=$(stat -c%s "$MAC_DMG" 2>/dev/null || stat -f%z "$MAC_DMG" 2>/dev/null)
+            MAC_HASH=$(sha256sum "$MAC_DMG" 2>/dev/null | cut -d' ' -f1 || shasum -a 256 "$MAC_DMG" 2>/dev/null | cut -d' ' -f1)
+            PAYLOAD=$(echo "$PAYLOAD" | jq --arg n "$MAC_NAME" --arg s "$MAC_SIZE" --arg h "$MAC_HASH" \
+              '.mac = {name: $n, size: ($s|tonumber), sha256: $h}')
+          fi
+
+          echo "$PAYLOAD" > "$DOWNLOADS/installer.json"
+          echo "Generated merged manifest:"
+          cat "$DOWNLOADS/installer.json"
 
       - name: Deploy to Firebase Hosting
         uses: w9jds/firebase-action@master
