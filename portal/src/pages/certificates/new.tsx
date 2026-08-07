@@ -16,6 +16,29 @@ import {
 import { useToast } from "@/hooks/use-toast";
 
 const ISO_STANDARDS = ["ISO 9001", "ISO 14001", "ISO 45001", "ISO 27001"];
+const TRAINING_TYPES = [
+  "ISO 9001:2015 Internal Auditor Training Course",
+  "ISO 9001:2015 Lead Auditor Training Course",
+  "ISO 14001:2015 Internal Auditor Training Course",
+  "ISO 14001:2015 Lead Auditor Training Course",
+  "ISO 45001:2018 Internal Auditor Training Course",
+  "ISO 45001:2018 Lead Auditor Training Course",
+  "ISO 27001:2022 Internal Auditor Training Course",
+  "ISO 27001:2022 Lead Auditor Training Course",
+  "IMS (ISO 9001:2015, 14001:2026, 45001:2018)",
+  "Data Privacy Act Awareness Training",
+  "Data Privacy Act Compliance Training",
+  "Occupational Safety and Health Training",
+  "Fire Safety and Emergency Response Training",
+  "First Aid and Basic Life Support Training",
+  "Environmental Management System Awareness",
+  "Risk Management and Assessment Training",
+  "Quality Management System Awareness",
+  "Internal Quality Audit Training",
+  "Supply Chain Management Training",
+  "Business Continuity Planning Training",
+  "Leadership and Management Skills Training",
+];
 
 const EMPTY = {
   title: "",
@@ -141,36 +164,52 @@ export default function CertificateNew() {
             ) : (
               <div className="space-y-2">
                 <Label>Training Type</Label>
-                <Input value={form.trainingType} onChange={e => set("trainingType", e.target.value)} placeholder="e.g. Safety Orientation" />
+                <Select value={form.trainingType} onValueChange={v => set("trainingType", v)}>
+                  <SelectTrigger><SelectValue placeholder="Select training type" /></SelectTrigger>
+                  <SelectContent className="max-h-64">
+                    {TRAINING_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
             )}
 
-            <div className="space-y-2">
-              <Label>Result</Label>
-              <Select value={form.result} onValueChange={v => set("result", v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="attended">Attended</SelectItem>
-                  <SelectItem value="passed">Passed (completed exam)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {form.category !== "iso" && (
+              <>
+                <div className="space-y-2">
+                  <Label>Result</Label>
+                  <Select value={form.result} onValueChange={v => set("result", v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="attended">Attended</SelectItem>
+                      <SelectItem value="passed">Passed (completed exam)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-            <div className="space-y-2">
-              <Label>Training Hours</Label>
-              <Select value={form.hours} onValueChange={v => set("hours", v)}>
-                <SelectTrigger><SelectValue placeholder="Select duration" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="8">8 hrs (1 day)</SelectItem>
-                  <SelectItem value="16">16 hrs (2 days)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+                <div className="space-y-2">
+                  <Label>Training Hours</Label>
+                  <Select value={form.hours} onValueChange={v => set("hours", v)}>
+                    <SelectTrigger><SelectValue placeholder="Select duration" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="8">8 hrs (1 day)</SelectItem>
+                      <SelectItem value="16">16 hrs (2 days)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-            <div className="space-y-2">
-              <Label>Training Date</Label>
-              <Input type="date" value={form.trainingDate} onChange={e => set("trainingDate", e.target.value)} />
-            </div>
+                <div className="space-y-2">
+                  <Label>Training Date</Label>
+                  <Input type="date" value={form.trainingDate} onChange={e => set("trainingDate", e.target.value)} />
+                </div>
+              </>
+            )}
+
+            {form.category === "iso" && (
+              <div className="space-y-2">
+                <Label>Audit Date</Label>
+                <Input type="date" value={form.trainingDate} onChange={e => set("trainingDate", e.target.value)} />
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label>Issue Date *</Label>

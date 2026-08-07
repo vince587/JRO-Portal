@@ -158,6 +158,7 @@ const TRAINING_TYPES = [
   "ISO 45001:2018 Lead Auditor Training Course",
   "ISO 27001:2022 Internal Auditor Training Course",
   "ISO 27001:2022 Lead Auditor Training Course",
+  "IMS (ISO 9001:2015, 14001:2026, 45001:2018)",
   "Data Privacy Act Awareness Training",
   "Data Privacy Act Compliance Training",
   "Occupational Safety and Health Training",
@@ -327,9 +328,13 @@ export default function CertificateDetail() {
   }, [isNew, trainingCerts, form, category]);
 
   const onSubmit = (data: CertificateFormValues) => {
-    const payload = { ...data };
+    const payload: any = { ...data };
     if (payload.category !== "iso") {
       payload.standard = "";
+    } else {
+      // ISO certificates don't use result / training hours
+      delete payload.result;
+      delete payload.hours;
     }
     if (isNew) {
       createMutation.mutate({ data: payload as any }, {
@@ -653,56 +658,60 @@ export default function CertificateDetail() {
                   />
                 )}
 
-                <FormField
-                  control={form.control}
-                  name="result"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Result</FormLabel>
-                      <Select disabled={!isEditing} value={field.value || "attended"} onValueChange={field.onChange}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select result" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="attended">Attended</SelectItem>
-                          <SelectItem value="passed">Passed (completed exam)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {category !== "iso" && (
+                  <FormField
+                    control={form.control}
+                    name="result"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Result</FormLabel>
+                        <Select disabled={!isEditing} value={field.value || "attended"} onValueChange={field.onChange}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select result" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="attended">Attended</SelectItem>
+                            <SelectItem value="passed">Passed (completed exam)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
 
-                <FormField
-                  control={form.control}
-                  name="hours"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Training Hours</FormLabel>
-                      <Select disabled={!isEditing} value={field.value || ""} onValueChange={field.onChange}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select duration" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="8">8 hrs (1 day)</SelectItem>
-                          <SelectItem value="16">16 hrs (2 days)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {category !== "iso" && (
+                  <FormField
+                    control={form.control}
+                    name="hours"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Training Hours</FormLabel>
+                        <Select disabled={!isEditing} value={field.value || ""} onValueChange={field.onChange}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select duration" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="8">8 hrs (1 day)</SelectItem>
+                            <SelectItem value="16">16 hrs (2 days)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
 
                 <FormField
                   control={form.control}
                   name="trainingDate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Training Date</FormLabel>
+                      <FormLabel>{category === "iso" ? "Audit Date" : "Training Date"}</FormLabel>
                       <FormControl>
                         <Input type="date" disabled={!isEditing} value={field.value || ""} onChange={field.onChange} />
                       </FormControl>
@@ -771,7 +780,7 @@ export default function CertificateDetail() {
                         )}
                       </FormLabel>
                       <FormControl>
-                        {isEditing && !isNew ? (
+                        {isEditing ? (
                           <Input
                             {...field}
                             value={field.value || ""}
@@ -847,89 +856,93 @@ export default function CertificateDetail() {
           <Card className="neu rounded-2xl">
             <CardHeader className="border-b neu-inset rounded-xl">
               <CardTitle className="text-lg flex items-center gap-2">
-                <Icon name="qr-code" className="text-primary" size={20} />
-                QR Code & Attachments
+                <Icon name={category === "iso" ? "file-text" : "qr-code"} className="text-primary" size={20} />
+                {category === "iso" ? "Attachments" : "QR Code & Attachments"}
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
-                <div className="md:col-span-2 flex flex-col items-center text-center border rounded-lg p-4 bg-muted/10">
-                  {qrCodeUrl ? (
-                    <>
-                      <div className="relative group">
-                        <img
-                          src={qrCodeUrl}
-                          alt="QR Code"
-                          className="w-40 h-40 border rounded-lg bg-white"
-                        />
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 rounded-lg transition-colors" />
-                      </div>
-                      <a
-                        href={getQrUrl(certificateNumber || "")}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-3 text-xs text-muted-foreground flex items-center gap-1 hover:text-primary transition-colors"
-                      >
-                        <Icon name="external-link" size={12} />
-                        {CERT_VERIFY_BASE_URL.replace(/^https?:\/\//, "")}/?code={certificateNumber}
-                      </a>
-                    </>
-                  ) : (
-                    <div className="flex flex-col items-center gap-2 py-6">
-                      <Icon name="scan-line" className="text-muted-foreground/30" size={48} />
-                      <p className="text-sm text-muted-foreground/60 font-medium">No QR code yet</p>
-                      <p className="text-xs text-muted-foreground/40 max-w-[200px]">
-                        {isEditing
-                          ? "Enter a certificate number below, then generate the QR code"
-                          : "QR code will appear once generated"}
-                      </p>
+              {category !== "iso" && (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+                    <div className="md:col-span-2 flex flex-col items-center text-center border rounded-lg p-4 bg-muted/10">
+                      {qrCodeUrl ? (
+                        <>
+                          <div className="relative group">
+                            <img
+                              src={qrCodeUrl}
+                              alt="QR Code"
+                              className="w-40 h-40 border rounded-lg bg-white"
+                            />
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 rounded-lg transition-colors" />
+                          </div>
+                          <a
+                            href={getQrUrl(certificateNumber || "")}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-3 text-xs text-muted-foreground flex items-center gap-1 hover:text-primary transition-colors"
+                          >
+                            <Icon name="external-link" size={12} />
+                            {CERT_VERIFY_BASE_URL.replace(/^https?:\/\//, "")}/?code={certificateNumber}
+                          </a>
+                        </>
+                      ) : (
+                        <div className="flex flex-col items-center gap-2 py-6">
+                          <Icon name="scan-line" className="text-muted-foreground/30" size={48} />
+                          <p className="text-sm text-muted-foreground/60 font-medium">No QR code yet</p>
+                          <p className="text-xs text-muted-foreground/40 max-w-[200px]">
+                            {isEditing
+                              ? "Enter a certificate number below, then generate the QR code"
+                              : "QR code will appear once generated"}
+                          </p>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
 
-                <div className="md:col-span-3 space-y-4">
-                  <div className="flex flex-wrap items-center gap-3">
-                    {isEditing && (
-                      <Button
-                        type="button"
-                        variant="default"
-                        size="sm"
-                        onClick={handleGenerateQR}
-                        disabled={qrGenerating || !canGenerateQr}
-                        title={!canGenerateQr ? "Enter a Certificate / ID Number first" : undefined}
-                      >
-                        <Icon name="qr-code" className="mr-1.5" size={16} />
-                        {qrGenerating ? "Generating..." : "Generate QR Code"}
-                      </Button>
-                    )}
-                    {qrCodeUrl && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          const a = document.createElement("a");
-                          a.href = qrCodeUrl;
-                          a.download = `qr-${certificateNumber || "certificate"}.png`;
-                          a.click();
-                        }}
-                      >
-                        <Icon name="download" className="mr-1.5" size={16} />
-                        Download
-                      </Button>
-                    )}
+                    <div className="md:col-span-3 space-y-4">
+                      <div className="flex flex-wrap items-center gap-3">
+                        {isEditing && (
+                          <Button
+                            type="button"
+                            variant="default"
+                            size="sm"
+                            onClick={handleGenerateQR}
+                            disabled={qrGenerating || !canGenerateQr}
+                            title={!canGenerateQr ? "Enter a Certificate / ID Number first" : undefined}
+                          >
+                            <Icon name="qr-code" className="mr-1.5" size={16} />
+                            {qrGenerating ? "Generating..." : "Generate QR Code"}
+                          </Button>
+                        )}
+                        {qrCodeUrl && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const a = document.createElement("a");
+                              a.href = qrCodeUrl;
+                              a.download = `qr-${certificateNumber || "certificate"}.png`;
+                              a.click();
+                            }}
+                          >
+                            <Icon name="download" className="mr-1.5" size={16} />
+                            Download
+                          </Button>
+                        )}
+                      </div>
+
+                      {isEditing && !canGenerateQr && (
+                        <p className="text-xs text-muted-foreground">
+                          <Icon name="alert-circle" className="inline mr-1" size={12} />
+                          Enter a <strong>Certificate / ID Number</strong> in the form above first
+                        </p>
+                      )}
+                    </div>
                   </div>
 
-                  {isEditing && !canGenerateQr && (
-                    <p className="text-xs text-muted-foreground">
-                      <Icon name="alert-circle" className="inline mr-1" size={12} />
-                      Enter a <strong>Certificate / ID Number</strong> in the form above first
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <Separator className="my-6" />
+                  <Separator className="my-6" />
+                </>
+              )}
 
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -983,7 +996,7 @@ export default function CertificateDetail() {
           </Card>
 
           {isEditing && (
-            <div className="flex justify-end gap-4 sticky bottom-6 bg-background/80 backdrop-blur-sm p-4 rounded-lg border shadow-md">
+            <div className="flex justify-end gap-4 bg-background/80 backdrop-blur-sm p-4 rounded-lg border shadow-md">
               <Button type="button" variant="outline" onClick={() => setIsEditing(false)}>
                 Cancel
               </Button>

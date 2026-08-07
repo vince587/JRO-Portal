@@ -1,10 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams } from "wouter";
-import { Icon } from "@/components/ui/icon"
+import { Icon } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { useDocumentViewer, viewerAttachmentUrl } from "@/components/library/document-viewer";
 
 interface PublicAttachment { id: string; filename: string; type: string; size: number; }
@@ -30,13 +33,13 @@ interface PublicFolder {
 
 function fileIcon(type: string) {
   const t = type.toLowerCase();
-  if (t === "pdf") return <Icon name="file-text" className="text-red-400" size={16} />;
-  if (["ppt", "pptx"].includes(t)) return <Icon name="presentation" className="text-orange-400" size={16} />;
-  if (["xls", "xlsx"].includes(t)) return <Icon name="file-spreadsheet" className="text-green-400" size={16} />;
-  if (["doc", "docx"].includes(t)) return <Icon name="file-text" className="text-blue-400" size={16} />;
-  if (["png", "jpg", "jpeg", "gif", "webp", "svg"].includes(t)) return <Icon name="file-image" className="text-purple-400" size={16} />;
-  if (["zip", "rar", "7z"].includes(t)) return <Icon name="archive" className="text-yellow-500" size={16} />;
-  return <Icon name="file" className="text-slate-400" size={16} />;
+  if (t === "pdf") return <Icon name="file-text" className="text-red-500" size={18} />;
+  if (["ppt", "pptx"].includes(t)) return <Icon name="presentation" className="text-orange-500" size={18} />;
+  if (["xls", "xlsx"].includes(t)) return <Icon name="file-spreadsheet" className="text-green-500" size={18} />;
+  if (["doc", "docx"].includes(t)) return <Icon name="file-text" className="text-blue-500" size={18} />;
+  if (["png", "jpg", "jpeg", "gif", "webp", "svg"].includes(t)) return <Icon name="file-image" className="text-purple-500" size={18} />;
+  if (["zip", "rar", "7z"].includes(t)) return <Icon name="archive" className="text-amber-500" size={18} />;
+  return <Icon name="file" className="text-muted-foreground" size={18} />;
 }
 
 function fileSize(bytes: number) {
@@ -51,7 +54,7 @@ function Logo() {
       <div className="h-8 w-8 rounded-lg overflow-hidden shadow-sm">
         <img src="/logo internal.png" alt="JMCS" className="h-full w-full object-contain" />
       </div>
-      <span className="text-sm font-semibold text-slate-600">JMCS</span>
+      <span className="text-sm font-semibold text-slate-700">JMCS</span>
     </div>
   );
 }
@@ -66,7 +69,7 @@ export default function LibraryFolderView() {
   const [codeInput, setCodeInput] = useState("");
   const [codeError, setCodeError] = useState(false);
   const [validCode, setValidCode] = useState<string | null>(null);
-  const { open: openViewer, node: viewerNode } = useDocumentViewer(false);
+  const { open: openViewer, node: viewerNode } = useDocumentViewer(false, true);
 
   const fetchFolder = useCallback((code?: string) => {
     const qs = code ? `?code=${encodeURIComponent(code)}` : "";
@@ -76,10 +79,9 @@ export default function LibraryFolderView() {
   useEffect(() => {
     if (!id) { setStatus("missing"); return; }
     let active = true;
-    const urlCode = new URLSearchParams(window.location.search).get("code");
     (async () => {
       try {
-        const res = await fetchFolder(urlCode ?? undefined);
+        const res = await fetchFolder(undefined);
         if (res.status === 403) {
           if (active) {
             const data = await res.json().catch(() => null);
@@ -91,7 +93,7 @@ export default function LibraryFolderView() {
         if (res.status === 404) { if (active) setStatus("missing"); return; }
         if (!res.ok) { if (active) setStatus("missing"); return; }
         const data = await res.json();
-        if (active) { setFolder(data); setStatus("ready"); setValidCode(urlCode ?? null); }
+        if (active) { setFolder(data); setStatus("ready"); setValidCode(null); }
       } catch {
         if (active) setStatus("missing");
       }
@@ -122,207 +124,256 @@ export default function LibraryFolderView() {
     }
   };
 
-  return (
-    <div className="min-h-screen flex flex-col p-4 pt-6 sm:pt-10" style={{ backgroundColor: "var(--neu-bg)" }}>
-      <div className="w-full max-w-2xl mx-auto flex-1">
+  const renderLoadingState = () => (
+    <div className="space-y-6">
+      <div className="animate-pulse space-y-4">
+        <div className="h-8 bg-muted/30 rounded-xl w-1/3" />
+        <div className="h-4 bg-muted/30 rounded-xl w-1/2" />
+        <Separator />
+        <div className="h-24 bg-muted/30 rounded-xl" />
+        <div className="h-24 bg-muted/30 rounded-xl" />
+        <div className="h-24 bg-muted/30 rounded-xl" />
+      </div>
+    </div>
+  );
 
-        {/* Brand header */}
-        <div className="mb-6">
-          <Logo />
+  const renderAccessDenied = () => (
+    <Card className="w-full max-w-md mx-auto">
+      <CardContent className="pt-8 pb-6 px-6 text-center">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-muted/50 mb-6">
+          <Icon name="lock" className="text-muted-foreground" size={28} />
         </div>
+        <CardTitle className="text-xl font-semibold text-foreground">Protected Folder</CardTitle>
+        <CardDescription className="mt-2 mb-6 max-w-sm mx-auto">
+          {denialReason === "This shared access has expired"
+            ? "This access link has expired. Please contact the sender for a new one."
+            : denialReason === "This material is not available"
+              ? "This folder is currently unavailable."
+              : "Enter the access code from your email to view this folder."}
+        </CardDescription>
 
-        {/* Loading */}
-        {status === "loading" && (
-          <div className="space-y-5">
-            <Skeleton className="h-8 w-1/3 rounded-xl" />
-            <Skeleton className="h-4 w-2/3 rounded-xl" />
-            <Skeleton className="h-px w-full" />
-            <Skeleton className="h-14 w-full rounded-2xl" />
-            <Skeleton className="h-14 w-full rounded-2xl" />
-            <Skeleton className="h-14 w-full rounded-2xl" />
-          </div>
-        )}
-
-        {/* Access code required */}
-        {status === "denied" && (
-          <div className="neu rounded-3xl p-8 text-center">
-            <div className="neu-inset inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-5">
-              <Icon name="lock" className="text-slate-500" size={28} />
+        {(denialReason !== "This shared access has expired" && denialReason !== "This material is not available") && (
+          <div className="max-w-xs mx-auto space-y-4">
+            <div className="flex gap-2">
+              <Input
+                value={codeInput}
+                onChange={e => { setCodeInput(e.target.value.toUpperCase()); setCodeError(false); }}
+                onKeyDown={e => e.key === "Enter" && submitCode()}
+                placeholder="Enter code"
+                className={`flex-1 text-center font-mono text-base tracking-widest ${codeError ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                autoFocus
+                maxLength={10}
+              />
+              <Button
+                onClick={submitCode}
+                disabled={!codeInput.trim()}
+                className="whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                <Icon name="key-round" className="mr-1.5 h-4 w-4" /> Unlock
+              </Button>
             </div>
-            <h1 className="text-xl font-bold text-slate-800 mb-1">Protected folder</h1>
-            <p className="text-sm text-slate-500 mb-7 max-w-sm mx-auto leading-relaxed">
-              {denialReason === "This shared access has expired"
-                ? "This access link has expired. Please contact the sender for a new one."
-                : denialReason === "This material is not available"
-                  ? "This folder is currently unavailable."
-                  : "Enter the access code from your email to view this folder."}
-            </p>
-
-            {denialReason !== "This shared access has expired" && denialReason !== "This material is not available" && (
-              <div className="max-w-xs mx-auto">
-                <div className="flex gap-3">
-                  <input
-                    value={codeInput}
-                    onChange={e => { setCodeInput(e.target.value.toUpperCase()); setCodeError(false); }}
-                    onKeyDown={e => e.key === "Enter" && submitCode()}
-                    placeholder="Enter code"
-                    className={`neu-inset flex-1 rounded-xl text-center font-mono text-base tracking-widest px-4 py-3 text-slate-700 placeholder:text-slate-400 focus:outline-none transition-all ${codeError ? "ring-2 ring-red-400" : ""}`}
-                    autoFocus
-                    maxLength={10}
-                  />
-                  <button
-                    onClick={submitCode}
-                    disabled={!codeInput.trim()}
-                    className="neu-sm rounded-xl px-6 py-3 text-sm font-semibold text-white transition-all disabled:opacity-40"
-                    style={{ backgroundColor: "#c0152b" }}
-                  >
-                    <Icon name="key-round" className="mr-1.5" size={16} /> Unlock
-                  </button>
-                </div>
-                {codeError && (
-                  <p className="text-sm text-red-500 mt-3">
-                    {denialReason || "Invalid code. Please check your email and try again."}
-                  </p>
-                )}
-              </div>
+            {codeError && (
+              <p className="text-sm text-destructive">
+                {denialReason || "Invalid code. Please check your email and try again."}
+              </p>
             )}
-
-            <button onClick={() => window.history.back()} className="mt-8 text-sm text-slate-400 hover:text-slate-600 transition-colors">
-              <Icon name="arrow-left" className="inline mr-1" size={14} /> Go back
-            </button>
           </div>
         )}
 
-        {/* Not found */}
-        {status === "missing" && (
-          <div className="neu rounded-3xl p-8 text-center">
-            <div className="neu-inset inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-5">
-              <Icon name="alert-triangle" className="text-slate-400" size={28} />
-            </div>
-            <h1 className="text-xl font-bold text-slate-800 mb-1">Not found</h1>
-            <p className="text-sm text-slate-500 mb-6 leading-relaxed">
-              This link is invalid or the folder has been removed.
-            </p>
-            <button onClick={() => window.history.back()} className="text-sm text-slate-400 hover:text-slate-600 transition-colors">
-              <Icon name="arrow-left" className="inline mr-1" size={14} /> Go back
-            </button>
-          </div>
-        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => window.history.back()}
+          className="mt-6 text-muted-foreground hover:text-foreground"
+        >
+          <Icon name="arrow-left" className="mr-1.5 h-3.5 w-3.5" /> Go back
+        </Button>
+      </CardContent>
+    </Card>
+  );
 
-        {/* Ready — folder content */}
-        {status === "ready" && folder && (
-          <div className="space-y-5">
-            {/* Folder header */}
-            <div className="neu rounded-2xl p-5">
-              <div className="flex items-center gap-3">
-                <div className="neu-inset h-11 w-11 rounded-xl flex items-center justify-center shrink-0">
-                  <Icon name="folder" className="text-primary" size={22} />
-                </div>
-                <div>
-                  <h1 className="text-xl font-bold text-slate-800 leading-tight">{folder.name}</h1>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    {folder.materials.length} {folder.materials.length === 1 ? "file" : "files"}
-                  </p>
-                </div>
+  const renderNotFound = () => (
+    <Card className="w-full max-w-md mx-auto">
+      <CardContent className="pt-8 pb-6 px-6 text-center">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-muted/50 mb-6">
+          <Icon name="alert-triangle" className="text-muted-foreground" size={28} />
+        </div>
+        <CardTitle className="text-xl font-semibold text-foreground">Not Found</CardTitle>
+        <CardDescription className="mt-2 mb-6">
+          This link is invalid or the folder has been removed.
+        </CardDescription>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => window.history.back()}
+          className="text-muted-foreground hover:text-foreground"
+        >
+          <Icon name="arrow-left" className="mr-1.5 h-3.5 w-3.5" /> Go back
+        </Button>
+      </CardContent>
+    </Card>
+  );
+
+  const renderFolderContent = () => {
+    if (!folder) return null;
+
+    return (
+      <div className="space-y-6">
+        {/* Folder Header */}
+        <Card>
+          <CardContent className="pt-6 pb-4 px-6">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 shrink-0">
+                <Icon name="folder" className="text-primary" size={24} />
+              </div>
+              <div>
+                <CardTitle className="text-xl font-semibold text-foreground leading-tight">{folder.name}</CardTitle>
+                <CardDescription className="mt-1">
+                  {folder.materials.length} {folder.materials.length === 1 ? "file" : "files"}
+                </CardDescription>
               </div>
             </div>
+          </CardContent>
+        </Card>
 
-            {/* File list */}
-            {folder.materials.length === 0 ? (
-              <div className="neu rounded-2xl py-12 text-center">
-                <Icon name="folder-open" className="mx-auto text-slate-300 mb-3" size={32} />
-                <p className="text-sm text-slate-400">This folder is empty.</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {folder.materials.map(m => {
-                  const isOpen = expanded === m.id;
-                  const hasFiles = m.attachments && m.attachments.length > 0;
-                  return (
-                    <Collapsible
-                      key={m.id}
-                      open={isOpen}
-                      onOpenChange={(o) => setExpanded(o ? m.id : null)}
-                    >
-                      <div className="neu rounded-2xl overflow-hidden">
-                        <CollapsibleTrigger asChild>
-                          <button className="w-full flex items-center gap-3 px-5 py-4 hover:bg-white/30 transition-colors text-left">
-                            <Icon name="chevron-right" className={`text-slate-300 transition-transform shrink-0 ${isOpen ? "rotate-90" : ""}`} size={16} />
-                            <div className="neu-inset h-8 w-8 rounded-lg flex items-center justify-center shrink-0">
-                              <Icon name="file-text" className="text-primary" size={14} />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <span className="block text-sm font-semibold text-slate-700 truncate">{m.title}</span>
-                              {m.category && (
-                                <span className="block text-xs text-slate-400 truncate mt-0.5">{m.category}</span>
-                              )}
-                            </div>
-                            {hasFiles && (
-                              <span className="neu-inset text-xs font-medium text-slate-500 px-2.5 py-1 rounded-full shrink-0">
-                                {m.attachments.length} {m.attachments.length === 1 ? "file" : "files"}
-                              </span>
+        {/* File List */}
+        {folder.materials.length === 0 ? (
+          <Card>
+            <CardContent className="py-12 px-6 text-center">
+              <Icon name="folder-open" className="mx-auto text-muted-foreground/40 mb-4" size={36} />
+              <p className="text-sm text-muted-foreground">This folder is empty.</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {folder.materials.map(m => {
+              const isOpen = expanded === m.id;
+              const hasFiles = m.attachments && m.attachments.length > 0;
+              return (
+                <Collapsible
+                  key={m.id}
+                  open={isOpen}
+                  onOpenChange={(o) => setExpanded(o ? m.id : null)}
+                >
+                  <Card className="overflow-hidden">
+                    <CardContent className="p-0">
+                      <CollapsibleTrigger asChild>
+                        <button className="w-full flex items-center gap-3 px-5 py-4 hover:bg-muted/30 transition-colors text-left">
+                          <Icon
+                            name="chevron-right"
+                            className={`text-muted-foreground/40 transition-transform shrink-0 ${isOpen ? "rotate-90" : ""}`}
+                            size={16}
+                          />
+                          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted/50 shrink-0">
+                            <Icon name="file-text" className="text-primary" size={16} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <span className="block text-sm font-medium text-foreground truncate">{m.title}</span>
+                            {m.category && (
+                              <span className="block text-xs text-muted-foreground truncate mt-0.5">{m.category}</span>
                             )}
-                          </button>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent>
-                          <div className="px-5 pb-5 pt-1">
-                            {m.description && (
-                              <p className="text-sm text-slate-500 mb-3 whitespace-pre-line leading-relaxed">{m.description}</p>
-                            )}
+                          </div>
+                          {hasFiles && (
+                            <Badge variant="outline" className="text-xs shrink-0">
+                              {m.attachments.length} {m.attachments.length === 1 ? "file" : "files"}
+                            </Badge>
+                          )}
+                        </button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="px-5 pb-5 pt-1 space-y-3">
+                          {m.description && (
+                            <CardDescription className="block whitespace-pre-line leading-relaxed">
+                              {m.description}
+                            </CardDescription>
+                          )}
 
-                            {m.url ? (
-                              <div className="neu rounded-xl overflow-hidden mb-3">
+                          {m.url ? (
+                            <Card className="border-muted/30">
+                              <CardContent className="p-0">
                                 <iframe
                                   src={m.url}
                                   title={m.title}
                                   referrerPolicy="no-referrer"
                                   sandbox="allow-scripts allow-same-origin allow-popups"
-                                  className="w-full h-[55vh] border-0"
+                                  className="w-full h-[55vh] border-0 rounded-xl"
                                 />
+                              </CardContent>
+                            </Card>
+                          ) : (
+                            !hasFiles && (
+                              <div className="py-4 text-center">
+                                <p className="text-sm text-muted-foreground">No content linked.</p>
                               </div>
-                            ) : (
-                              !hasFiles && (
-                                <p className="text-sm text-slate-400 py-4 text-center">No content linked.</p>
-                              )
-                            )}
+                            )
+                          )}
 
-                            {hasFiles && (
-                              <div className="space-y-2">
-                                {m.attachments!.map(a => (
-                                  <button
-                                    key={a.id}
-                                    type="button"
-                                    onClick={() => openViewer({ ...a, url: viewerAttachmentUrl(m.participantLink!, a.id, validCode ?? undefined) })}
-                                    className="w-full flex items-center gap-3 neu-sm rounded-xl px-4 py-3 hover:shadow-md transition-all text-left group"
-                                  >
-                                    <div className="neu-inset h-8 w-8 rounded-lg flex items-center justify-center shrink-0">
-                                      {fileIcon(a.type)}
-                                    </div>
-                                    <span className="flex-1 min-w-0 text-sm text-slate-700 truncate group-hover:text-primary transition-colors">{a.filename}</span>
-                                    <span className="text-xs text-slate-400 shrink-0">{fileSize(a.size)}</span>
-                                    <Icon name="external-link" className="text-slate-300 group-hover:text-primary shrink-0 transition-colors" size={14} />
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </CollapsibleContent>
-                      </div>
-                    </Collapsible>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Footer */}
-            <div className="flex items-center justify-between pb-6">
-              <button onClick={() => window.history.back()} className="text-sm text-slate-400 hover:text-slate-600 transition-colors">
-                <Icon name="arrow-left" className="inline mr-1" size={14} /> Back
-              </button>
-              <Logo />
-            </div>
+                          {hasFiles && (
+                            <div className="space-y-2 border-t pt-3">
+                              {m.attachments!.map(a => (
+                                <button
+                                  key={a.id}
+                                  type="button"
+                                  onClick={() => openViewer({ ...a, url: viewerAttachmentUrl(m.participantLink!, a.id, validCode ?? undefined) })}
+                                  className="w-full flex items-center gap-3 rounded-lg px-4 py-3 hover:bg-muted/50 transition-colors text-left group"
+                                >
+                                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted/50 shrink-0">
+                                    {fileIcon(a.type)}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors">{a.filename}</p>
+                                    <p className="text-xs text-muted-foreground mt-0.5">{fileSize(a.size)}</p>
+                                  </div>
+                                  <Icon name="external-link" className="text-muted-foreground/40 group-hover:text-foreground shrink-0 transition-colors" size={16} />
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </CollapsibleContent>
+                    </CardContent>
+                  </Card>
+                </Collapsible>
+              );
+            })}
           </div>
         )}
+
+        {/* Footer */}
+        <div className="flex items-center justify-between pt-4 border-t">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => window.history.back()}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <Icon name="arrow-left" className="mr-1.5 h-3.5 w-3.5" /> Back
+          </Button>
+          <Logo />
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col bg-background p-4 pt-6 sm:pt-10">
+      <div className="w-full max-w-3xl mx-auto flex-1">
+        {/* Brand Header */}
+        <div className="mb-8">
+          <Logo />
+        </div>
+
+        {/* Loading */}
+        {status === "loading" && renderLoadingState()}
+
+        {/* Access Code Required */}
+        {status === "denied" && renderAccessDenied()}
+
+        {/* Not Found */}
+        {status === "missing" && renderNotFound()}
+
+        {/* Ready - Folder Content */}
+        {status === "ready" && folder && renderFolderContent()}
       </div>
       {viewerNode}
     </div>

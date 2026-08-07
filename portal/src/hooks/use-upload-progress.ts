@@ -17,8 +17,13 @@ export function useUploadProgress() {
     uploadedBytes: 0,
   });
   const xhrRef = useRef<XMLHttpRequest | null>(null);
+  const timeoutRef = useRef<any>(null);
 
   const startUpload = useCallback((fileName: string, fileSize: number) => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
     setState({ progress: 0, uploading: true, fileName, fileSize, uploadedBytes: 0 });
   }, []);
 
@@ -29,15 +34,23 @@ export function useUploadProgress() {
 
   const finishUpload = useCallback(() => {
     setState(prev => ({ ...prev, progress: 100, uploading: false }));
-    setTimeout(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    timeoutRef.current = setTimeout(() => {
       setState({ progress: 0, uploading: false, fileName: "", fileSize: 0, uploadedBytes: 0 });
+      timeoutRef.current = null;
     }, 800);
   }, []);
 
   const failUpload = useCallback(() => {
     setState(prev => ({ ...prev, uploading: false }));
-    setTimeout(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    timeoutRef.current = setTimeout(() => {
       setState({ progress: 0, uploading: false, fileName: "", fileSize: 0, uploadedBytes: 0 });
+      timeoutRef.current = null;
     }, 1500);
   }, []);
 
@@ -45,6 +58,10 @@ export function useUploadProgress() {
     if (xhrRef.current) {
       xhrRef.current.abort();
       xhrRef.current = null;
+    }
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
     }
     setState({ progress: 0, uploading: false, fileName: "", fileSize: 0, uploadedBytes: 0 });
   }, []);

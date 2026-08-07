@@ -543,7 +543,7 @@ export default function CertificatesList() {
             {isIsoRoute ? "ISO Certificates" : isTrainingRoute ? "Training Certificates" : "Certificates & Training"}
           </h1>
           <p className="text-muted-foreground mt-1">
-            {isIsoRoute ? "Manage ISO certification records." : isTrainingRoute ? "Manage training records." : "Track client ISO and Training Certificate"}
+            {isIsoRoute ? "Manage ISO certification records." : isTrainingRoute ? "Manage training records." : "Track client ISO and Training Certificates"}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -831,7 +831,7 @@ export default function CertificatesList() {
                         </TableCell>
                         {!isIsoView && (
                           <TableCell>
-                            {cert.qrCodeUrl ? (
+                            {cert.category === "iso" ? null : cert.qrCodeUrl ? (
                               <Dialog>
                                 <DialogTrigger asChild>
                                   <QRCodeThumbnail url={cert.qrCodeUrl} />

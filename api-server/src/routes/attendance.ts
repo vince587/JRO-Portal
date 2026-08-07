@@ -67,6 +67,57 @@ const ClockOutBody = z.object({
   location: LocationSchema,
 });
 
+export interface PayrollPeriodDoc {
+  id?: string;
+  startDate: string;
+  endDate: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+router.get("/payroll-periods", requireAuth, async (req, res): Promise<void> => {
+  const periods = await getAll<PayrollPeriodDoc>("payroll_periods");
+  periods.sort((a, b) => (a.startDate < b.startDate ? -1 : a.startDate > b.startDate ? 1 : 0));
+  res.json(periods.map(p => ({
+    id: p.id,
+    startDate: p.startDate,
+    endDate: p.endDate,
+    createdAt: p.createdAt,
+    updatedAt: p.updatedAt ?? null,
+  })));
+});
+
+export interface OfficialHoursConfig {
+  regular: { arrival: string; departure: string; hours: number };
+  saturday: { arrival: string; departure: string; hours: number };
+}
+
+const DEFAULT_OFFICIAL_HOURS: OfficialHoursConfig = {
+  regular: { arrival: "08:00", departure: "17:00", hours: 8 },
+  saturday: { arrival: "08:00", departure: "12:00", hours: 4 },
+};
+
+router.get("/official-hours", requireAuth, async (req, res): Promise<void> => {
+  const existing = await getDoc<OfficialHoursConfig & { updatedAt?: string }>("payroll_settings", "official_hours");
+  if (existing) {
+    res.json({
+      regular: {
+        arrival: existing.regular?.arrival ?? DEFAULT_OFFICIAL_HOURS.regular.arrival,
+        departure: existing.regular?.departure ?? DEFAULT_OFFICIAL_HOURS.regular.departure,
+        hours: existing.regular?.hours ?? DEFAULT_OFFICIAL_HOURS.regular.hours,
+      },
+      saturday: {
+        arrival: existing.saturday?.arrival ?? DEFAULT_OFFICIAL_HOURS.saturday.arrival,
+        departure: existing.saturday?.departure ?? DEFAULT_OFFICIAL_HOURS.saturday.departure,
+        hours: existing.saturday?.hours ?? DEFAULT_OFFICIAL_HOURS.saturday.hours,
+      },
+      updatedAt: existing.updatedAt ?? null,
+    });
+    return;
+  }
+  res.json({ ...DEFAULT_OFFICIAL_HOURS, updatedAt: null });
+});
+
 router.get("/attendance/today", requireAuth, async (req, res): Promise<void> => {
   const currentUser = req.currentUser!;
   const date = todayString();

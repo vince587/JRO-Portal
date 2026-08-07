@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { format } from "date-fns";
 import { Icon } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,12 +23,13 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
-  useAttendance,
   useAttendanceReport,
   useTimesheets,
   useSubmitTimesheet,
   useReviewTimesheet,
 } from "@/lib/hooks/use-attendance";
+import { useState as useReactState } from "react";
+import { Link } from "wouter";
 
 function statusBadge(status: string) {
   const cls =
@@ -39,22 +39,17 @@ function statusBadge(status: string) {
   return <Badge variant="outline" className={cls}>{status.charAt(0).toUpperCase() + status.slice(1)}</Badge>;
 }
 
-function fmtTime(iso: string | null): string {
-  if (!iso) return "—";
-  try { return format(new Date(iso), "h:mm a"); } catch { return "—"; }
-}
-
 interface AttendanceTabProps {
   isAdmin: boolean;
 }
 
 export function AttendanceTab({ isAdmin }: AttendanceTabProps) {
   const { toast } = useToast();
-  const { data: records, isLoading: recordsLoading } = useAttendance();
   const { data: timesheets } = useTimesheets();
   const { data: report } = useAttendanceReport(undefined, undefined, { enabled: isAdmin });
   const submitTimesheet = useSubmitTimesheet();
   const reviewTimesheet = useReviewTimesheet();
+  const [timeinOpen, setTimeinOpen] = useReactState(false);
 
   const [tsDialogOpen, setTsDialogOpen] = useState(false);
   const [tsForm, setTsForm] = useState({ periodStart: "", periodEnd: "" });
@@ -91,12 +86,29 @@ export function AttendanceTab({ isAdmin }: AttendanceTabProps) {
 
   return (
     <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium">Daily Time Record</p>
+          <p className="text-xs text-muted-foreground">Print an employee's daily time record sheet.</p>
+        </div>
+        <Button variant="outline" size="sm" asChild>
+          <Link href="/hris/daily-time-record">
+            <Icon name="printer" size={16} className="mr-2" /> Daily Time Record
+          </Link>
+        </Button>
+      </div>
+
       {/* Admin report */}
       {isAdmin && report && report.summary.length > 0 && (
         <Card>
-          <CardHeader className="pb-3 border-b">
-            <CardTitle className="text-base">Attendance Summary</CardTitle>
-            <CardDescription>Total hours worked per employee across all records.</CardDescription>
+          <CardHeader className="pb-3 border-b flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="text-base">Attendance Summary</CardTitle>
+              <CardDescription>Total hours worked per employee across all records.</CardDescription>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => setTimeinOpen(true)}>
+              <Icon name="clock" size={16} className="mr-2" /> Time-In Kiosk
+            </Button>
           </CardHeader>
           <CardContent className="p-0">
             <Table>
@@ -120,51 +132,6 @@ export function AttendanceTab({ isAdmin }: AttendanceTabProps) {
           </CardContent>
         </Card>
       )}
-
-      {/* Attendance records */}
-      <Card>
-        <CardHeader className="pb-3 border-b">
-          <CardTitle className="text-base">{isAdmin ? "Attendance Records" : "My Attendance"}</CardTitle>
-          <CardDescription>Recent clock in/out history.</CardDescription>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/10 hover:bg-muted/10">
-                  {isAdmin && <TableHead>Employee</TableHead>}
-                  <TableHead>Date</TableHead>
-                  <TableHead>Clock In</TableHead>
-                  <TableHead>Clock Out</TableHead>
-                  <TableHead>Hours</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {recordsLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={isAdmin ? 5 : 4} className="text-center py-8 text-muted-foreground">Loading…</TableCell>
-                  </TableRow>
-                ) : !records || records.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={isAdmin ? 5 : 4} className="text-center py-12 text-muted-foreground">
-                      <Icon name="clock" size={32} className="mx-auto mb-2 opacity-50" />
-                      <p>No attendance records yet.</p>
-                    </TableCell>
-                  </TableRow>
-                ) : records.map(r => (
-                  <TableRow key={r.id}>
-                    {isAdmin && <TableCell className="text-sm font-medium">{r.userFullName || r.employeeId || r.userId}</TableCell>}
-                    <TableCell className="text-sm">{r.date}</TableCell>
-                    <TableCell className="text-sm">{fmtTime(r.clockIn)}</TableCell>
-                    <TableCell className="text-sm">{fmtTime(r.clockOut)}</TableCell>
-                    <TableCell className="text-sm">{r.hoursWorked}h</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Timesheets */}
       <Card>
@@ -249,6 +216,34 @@ export function AttendanceTab({ isAdmin }: AttendanceTabProps) {
             <Button variant="outline" onClick={() => setTsDialogOpen(false)}>Cancel</Button>
             <Button onClick={handleSubmitTimesheet} disabled={submitTimesheet.isPending}>
               {submitTimesheet.isPending ? "Submitting..." : "Submit"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={timeinOpen} onOpenChange={setTimeinOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Time-In Kiosk</DialogTitle>
+            <DialogDescription>Employees can clock in/out from any computer using this kiosk app.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              The Time-In Kiosk is a standalone web app that employees can access from any computer.
+              It shares the same attendance records as this portal.
+            </p>
+            <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+              <Icon name="link" size={16} className="text-muted-foreground" />
+              <code className="text-sm">http://localhost:3001</code>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Deploy the time-in-app to your server and replace the URL above.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTimeinOpen(false)}>Close</Button>
+            <Button onClick={() => { window.open("http://localhost:3001", "_blank"); setTimeinOpen(false); }}>
+              Open Kiosk
             </Button>
           </DialogFooter>
         </DialogContent>

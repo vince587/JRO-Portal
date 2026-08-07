@@ -38,6 +38,7 @@ uploads/
 error/
 C?/
 kimi_cli.py
+timein-app/
 
 # OS / editor
 .DS_Store

@@ -473,4 +473,78 @@ router.get("/admin/compliance-calendar", async (_req, res) => {
   res.json(upcoming.slice(0, 50));
 });
 
+// ── Payroll Periods (admin-suggested coverage dates) ──
+
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+const PayrollPeriodSchema = z.object({
+  startDate: z.string().regex(DATE_PATTERN, "startDate must be YYYY-MM-DD"),
+  endDate: z.string().regex(DATE_PATTERN, "endDate must be YYYY-MM-DD"),
+});
+
+function mapPayrollPeriod(p: any) {
+  return {
+    id: p.id,
+    startDate: p.startDate,
+    endDate: p.endDate,
+    createdAt: p.createdAt,
+    updatedAt: p.updatedAt ?? null,
+  };
+}
+
+router.post("/admin/payroll-periods", async (req, res) => {
+  const parsed = PayrollPeriodSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+  if (parsed.data.endDate < parsed.data.startDate) { res.status(400).json({ error: "End date cannot be before start date" }); return; }
+  const now = new Date().toISOString();
+  const doc = await createDoc("payroll_periods", { ...parsed.data, createdAt: now, updatedAt: now });
+  res.status(201).json(mapPayrollPeriod(doc));
+});
+
+router.patch("/admin/payroll-periods/:id", async (req, res) => {
+  const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const existing = await getDoc<any>("payroll_periods", id);
+  if (!existing) { res.status(404).json({ error: "Not found" }); return; }
+  const parsed = PayrollPeriodSchema.partial().safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+  const updatedData = { ...existing, ...parsed.data };
+  if (updatedData.endDate < updatedData.startDate) { res.status(400).json({ error: "End date cannot be before start date" }); return; }
+  await updateDoc("payroll_periods", id, { ...parsed.data, updatedAt: new Date().toISOString() });
+  const updated = await getDoc<any>("payroll_periods", id);
+  res.json(mapPayrollPeriod(updated));
+});
+
+router.delete("/admin/payroll-periods/:id", async (req, res) => {
+  const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  await deleteDoc("payroll_periods", id);
+  res.json({ success: true });
+});
+
+// ── Official Hours (admin-suggested schedule) ──
+
+const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+const OfficialHoursSchema = z.object({
+  regular: z.object({
+    arrival: z.string().regex(TIME_PATTERN, "regular arrival must be HH:MM"),
+    departure: z.string().regex(TIME_PATTERN, "regular departure must be HH:MM"),
+    hours: z.coerce.number().min(0.5).max(24),
+  }),
+  saturday: z.object({
+    arrival: z.string().regex(TIME_PATTERN, "saturday arrival must be HH:MM"),
+    departure: z.string().regex(TIME_PATTERN, "saturday departure must be HH:MM"),
+    hours: z.coerce.number().min(0.5).max(24),
+  }),
+});
+
+router.put("/admin/official-hours", async (req, res) => {
+  const parsed = OfficialHoursSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+  if (parsed.data.regular.arrival >= parsed.data.regular.departure) { res.status(400).json({ error: "Regular departure must be after arrival" }); return; }
+  if (parsed.data.saturday.arrival >= parsed.data.saturday.departure) { res.status(400).json({ error: "Saturday departure must be after arrival" }); return; }
+  const now = new Date().toISOString();
+  await createDoc("payroll_settings", { ...parsed.data, updatedAt: now }, "official_hours");
+  res.json({ ...parsed.data, updatedAt: now });
+});
+
 export default router;

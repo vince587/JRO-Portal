@@ -341,6 +341,11 @@ export default function HrisEmployeeDetail() {
               ) : (
                 <>
                   <Button variant="outline" onClick={handleEdit}><Icon name="save" className="mr-2" size={16} /> Edit</Button>
+                  <Button variant="outline" asChild>
+                    <Link href={`/hris/daily-time-record/${employee.id}`}>
+                      <Icon name="printer" className="mr-2" size={16} /> Daily Time Record
+                    </Link>
+                  </Button>
                   {/* Only show delete button for admins */}
                   {isAdmin && (
                     <Button variant="destructive" size="icon" onClick={() => setDeleteOpen(true)}><Icon name="trash-2" size={16} /></Button>

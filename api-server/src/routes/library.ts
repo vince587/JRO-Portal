@@ -153,13 +153,14 @@ function mapDoc(e: LibraryDoc) {
   };
 }
 
-async function maybeSendEmail(req: any, doc: LibraryDoc) {
+async function maybeSendEmail(req: any, doc: LibraryDoc, oldEmails: string[] = []) {
   const email = doc.email ?? req.body?.email;
   if (doc.section !== "external") return;
-  const recipients = (doc.accessEmails && doc.accessEmails.length > 0 ? doc.accessEmails : (email ? [email] : []));
+  const list = doc.accessEmails ?? [];
+  const recipients = list.filter(e => !oldEmails.includes(e));
   if ((doc.access ?? "open") === "disabled") {
     // Revoke access for every participant that currently has it.
-    for (const r of recipients) {
+    for (const r of list) {
       await sendAccessRevokedEmail({ to: r, title: doc.title });
     }
     return;
@@ -167,7 +168,7 @@ async function maybeSendEmail(req: any, doc: LibraryDoc) {
   if (recipients.length === 0) return;
   const base = publicViewerUrl();
   const link = doc.participantLink
-    ? `${base}/library/${doc.participantLink}${doc.accessCode ? `?code=${doc.accessCode}` : ""}`
+    ? `${base}/library/${doc.participantLink}`
     : (doc.url ?? "");
   if (!link) return;
   const access = doc.access ?? "open";
@@ -276,9 +277,8 @@ router.post("/library/folders", requireAnyPermission("canAccessJmcs", "canAccess
   });
   if (shareable && parsed.data.sendEmail && (created.accessEmails ?? []).length > 0) {
     const base = publicViewerUrl();
-    const code = created.accessCode ? `?code=${created.accessCode}` : "";
     for (const to of (created.accessEmails ?? [])) {
-      await sendFolderAccessEmail({ to, folderName: created.name, link: `${base}/library/folder/${created.participantLink}${code}`, access: created.access ?? "open", code: created.accessCode ?? undefined, expiresAt: created.expiresAt });
+      await sendFolderAccessEmail({ to, folderName: created.name, link: `${base}/library/folder/${created.participantLink}`, access: created.access ?? "open", code: created.accessCode ?? undefined, expiresAt: created.expiresAt });
     }
   }
 });
@@ -317,8 +317,7 @@ router.patch("/library/folders/:id", requireAnyPermission("canAccessJmcs", "canA
     const recipients = (updated!.accessEmails && updated!.accessEmails.length > 0 ? updated!.accessEmails : (parsed.data.email ?? existing.email ? [parsed.data.email ?? existing.email!] : []));
     if (existing.section === "external" && recipients.length > 0) {
       const base = publicViewerUrl();
-      const code = updated!.accessCode ? `?code=${updated!.accessCode}` : "";
-      const shareLink = updated!.participantLink ? `${base}/library/folder/${updated!.participantLink}${code}` : "";
+      const shareLink = updated!.participantLink ? `${base}/library/folder/${updated!.participantLink}` : "";
     if ((parsed.data.access ?? existing.access ?? "open") === "disabled") {
       // Revoke access for every participant that currently has it.
       const revoked = recipients;
@@ -326,7 +325,8 @@ router.patch("/library/folders/:id", requireAnyPermission("canAccessJmcs", "canA
         await sendAccessRevokedEmail({ to: r, title: `Folder: ${existing.name}` });
       }
     } else if (parsed.data.sendEmail === true && shareLink) {
-      for (const to of recipients) {
+      const newOnes = recipients.filter(e => !(existing.accessEmails ?? []).includes(e));
+      for (const to of newOnes) {
         await sendFolderAccessEmail({ to, folderName: existing.name, link: shareLink, access: parsed.data.access ?? existing.access ?? "open", code: updated!.accessCode ?? undefined, expiresAt: updated!.expiresAt });
       }
     }
@@ -484,7 +484,7 @@ router.patch("/library/:id", requireAnyPermission("canAccessJmcs", "canAccessSis
   await updateDoc("library", id, updateData);
   const updated = await getDoc<LibraryDoc>("library", id);
   res.json(mapDoc(updated!));
-  await maybeSendEmail(req, updated!);
+  await maybeSendEmail(req, updated!, existing.accessEmails ?? []);
 });
 
 // Ensure an external material has a non-guessable share token (generating one

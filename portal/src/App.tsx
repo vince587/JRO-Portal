@@ -10,6 +10,10 @@ import { SseInit } from "@/hooks/use-sse";
 import { useAuth } from "@/lib/auth-context";
 import { isMobileDevice } from "@/lib/mobile-detect";
 import { usePublicRedirect } from "@/lib/use-public-redirect";
+import { Icon } from "@/components/ui/icon";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 
 import Login from "@/pages/login";
 import Welcome from "@/pages/welcome";
@@ -39,6 +43,8 @@ import Developers from "@/pages/developers";
 import HrisList from "@/pages/hris/index";
 import HrisEmployeeDetail from "@/pages/hris/detail";
 import HrisLeavePrint from "@/pages/hris/leave-print";
+import HrisTimeCardReport from "@/pages/hris/time-card-report";
+import HrisDailyTimeRecord from "@/pages/hris/daily-time-record";
 import EmployeeDashboard from "@/pages/employee/dashboard";
 import ActivityAudit from "@/pages/activity-audit";
 import Profile from "@/pages/profile";
@@ -52,13 +58,82 @@ function isPublicViewerDomain(): boolean {
 
 function PublicRoot() {
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
-      <div className="text-center max-w-md mx-4">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">JMCS Materials</h1>
-        <p className="text-sm text-gray-600">
-          Please use the link from your email to access your materials.
-        </p>
-      </div>
+    <div className="min-h-screen flex flex-col bg-background">
+      {/* Header */}
+      <header className="border-b border-muted/30">
+        <div className="max-w-3xl mx-auto px-4 py-4 flex items-center gap-3">
+          <div className="h-10 w-10 rounded-xl overflow-hidden shadow-sm">
+            <img src="/logo internal.png" alt="JMCS" className="h-full w-full object-contain" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-foreground leading-tight">JMCS</p>
+            <p className="text-[11px] text-muted-foreground">Materials Portal</p>
+          </div>
+        </div>
+      </header>
+
+      {/* Hero */}
+      <main className="flex-1 flex flex-col items-center justify-center px-4 py-16">
+        <Card className="w-full max-w-lg mx-auto">
+          <CardContent className="pt-10 pb-8 px-8 text-center">
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-primary/10 mb-6">
+              <Icon name="library" className="text-primary" size={36} />
+            </div>
+            <CardTitle className="text-2xl font-bold text-foreground mb-2">JMCS Materials</CardTitle>
+            <CardDescription className="text-base max-w-sm mx-auto mb-8">
+              Please use the link from your email to access your shared materials and training resources.
+            </CardDescription>
+
+            <Separator className="mb-6" />
+
+            <p className="text-sm text-muted-foreground/60 leading-relaxed max-w-sm mx-auto">
+              If you were sent materials to review, check your email for a personalized link.
+              Protected materials require an access code sent to your registered email address.
+            </p>
+
+            <div className="mt-8 flex flex-col items-center gap-3 text-xs text-muted-foreground/50">
+              <div className="flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-muted/50">
+                  <Icon name="lock" size={12} />
+                </div>
+                <span>End-to-end encrypted delivery</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-muted/50">
+                  <Icon name="eye" size={12} />
+                </div>
+                <span>View-only — no download required</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-muted/50">
+                  <Icon name="clock" size={12} />
+                </div>
+                <span>Access expires automatically after set period</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Help prompt */}
+        <div className="mt-8 text-center max-w-md">
+          <p className="text-xs text-muted-foreground/50">
+            Need help? Contact your JMCS representative or IT support.
+          </p>
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="border-t border-muted/30 py-4">
+        <div className="max-w-3xl mx-auto px-4 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="h-6 w-6 rounded-md overflow-hidden">
+              <img src="/logo internal.png" alt="JMCS" className="h-full w-full object-contain" />
+            </div>
+            <span className="text-[11px] text-muted-foreground">JMCS Materials Portal</span>
+          </div>
+          <span className="text-[11px] text-muted-foreground/40">&copy; {new Date().getFullYear()} JMCS. All rights reserved.</span>
+        </div>
+      </footer>
     </div>
   );
 }
@@ -276,6 +351,18 @@ function Router() {
 
       <Route path="/hris/leaves/:id">
         <ProtectedRoute component={HrisLeavePrint} />
+      </Route>
+
+      <Route path="/hris/time-card-report">
+        <ProtectedRoute component={HrisTimeCardReport} />
+      </Route>
+
+      <Route path="/hris/daily-time-record/:id">
+        <ProtectedRoute component={HrisDailyTimeRecord} />
+      </Route>
+
+      <Route path="/hris/daily-time-record">
+        <ProtectedRoute component={HrisDailyTimeRecord} />
       </Route>
 
       <Route path="/hris/:id">

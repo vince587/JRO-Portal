@@ -85,7 +85,7 @@ interface LibraryMaterial {
 }
 
 const materialSchema = z.object({
-  title: z.string().min(1, "Title is required"),
+  title: z.string().optional(),
   section: z.enum(["internal", "external"]),
   department: z.enum(["JMCS", "SIS", "Both"]).optional().nullable(),
   category: z.string().optional(),
@@ -210,6 +210,8 @@ function MaterialDialog({
   const fileRef = useRef<HTMLInputElement>(null);
   const uploadProgress = useUploadProgress();
 
+  const hasInitializedRef = useRef(false);
+
   const form = useForm<MaterialFormValues>({
     resolver: zodResolver(materialSchema),
     defaultValues: {
@@ -228,7 +230,13 @@ function MaterialDialog({
   });
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      hasInitializedRef.current = false;
+      return;
+    }
+    if (hasInitializedRef.current) return;
+    hasInitializedRef.current = true;
+
     if (editing) {
       setAttachments(editing.attachments || []);
       setAccessEmails(editing.accessEmails ?? []);
@@ -265,8 +273,19 @@ function MaterialDialog({
 
   const saveMutation = useMutation({
     mutationFn: async (data: MaterialFormValues) => {
+      let title = data.title?.trim();
+      if (!title) {
+        if (attachments.length > 1) {
+          title = `${attachments.length} Documents`;
+        } else if (attachments.length === 1) {
+          title = attachments[0].filename.replace(/\.[^.]+$/, "").trim();
+        } else {
+          title = "Untitled Material";
+        }
+      }
       const body = {
         ...data,
+        title,
         description: data.description || null,
         department: data.section === "internal" ? data.department ?? null : null,
         category: data.section === "external" ? data.category || null : null,
@@ -311,12 +330,12 @@ function MaterialDialog({
     onError: () => toast({ title: "Failed to delete material", variant: "destructive" }),
   });
 
-  const ensureSaved = async (fallbackTitle?: string): Promise<LibraryMaterial | null> => {
+  const ensureSaved = async (fallbackTitle?: string, forceFallbackTitle = false): Promise<LibraryMaterial | null> => {
     if (editing) return editing;
     const v = form.getValues();
     // When attaching a file before the material is named, use the file name
     // so the auto-created material passes server-side validation.
-    const title = v.title?.trim() || fallbackTitle?.replace(/\.[^.]+$/, "").trim() || "";
+    const title = (forceFallbackTitle ? "" : v.title?.trim()) || fallbackTitle?.replace(/\.[^.]+$/, "").trim() || "";
     const body = {
       title,
       section: v.section,
@@ -344,6 +363,9 @@ function MaterialDialog({
         return null;
       }
       const created = await res.json();
+      if (!form.getValues("title")?.trim()) {
+        form.setValue("title", created.title);
+      }
       onCreated?.(created);
       return created;
     } catch {
@@ -351,25 +373,69 @@ function MaterialDialog({
     }
   };
 
-  const uploadAttachment = async (file: File) => {
+  const uploadAttachment = async (files: File | File[]) => {
     setUploading(true);
+    const filesArray = Array.isArray(files) ? files : [files];
+    const isCreatingNew = !editing;
     try {
-      const mat = await ensureSaved(file.name);
-      if (!mat) { setUploading(false); return; }
-      const fd = new FormData();
-      fd.append("file", file);
-      uploadProgress.startUpload(file.name, file.size);
-      const res = await uploadProgress.uploadWithProgress(`/api/library/${mat.id}/attachments`, fd);
-      if (!res.ok) {
-        let msg = "Upload failed";
-        try { const t = await res.text(); if (t) msg = t.slice(0, 200); } catch {}
-        throw new Error(msg);
+      for (const file of filesArray) {
+        try {
+          let currentMaterial = editing;
+          if (isCreatingNew) {
+            // Force use the filename for multiple files, otherwise respect typed title if present
+            const forceFilename = filesArray.length > 1;
+            const fallbackTitle = file.name;
+            const mat = await ensureSaved(fallbackTitle, forceFilename);
+            if (!mat) {
+              throw new Error(`Failed to find or create material for ${file.name}`);
+            }
+            currentMaterial = mat;
+          } else if (!currentMaterial) {
+            const fallbackTitle = file.name;
+            const mat = await ensureSaved(fallbackTitle);
+            if (!mat) {
+              throw new Error(`Failed to find or create material for ${file.name}`);
+            }
+            currentMaterial = mat;
+          }
+          const fd = new FormData();
+          fd.append("file", file);
+          uploadProgress.startUpload(file.name, file.size);
+          const attachment = await uploadProgress.uploadWithProgress(`/api/library/${currentMaterial.id}/attachments`, fd);
+          if (!isCreatingNew) {
+            setAttachments(prev => [...prev, attachment]);
+          }
+        } catch (fileErr: any) {
+          toast({ title: `Failed to upload ${file.name}: ${fileErr?.message || "Unknown error"}`, variant: "destructive" });
+        }
       }
-      const att = await res.json();
-      setAttachments(a => [...a, att]);
-      toast({ title: "Attachment uploaded" });
+      toast({ title: "Attachments uploaded" });
+      if (isCreatingNew) {
+        onOpenChange(false);
+        onSuccess();
+      }
     } catch (e: any) {
-      toast({ title: e?.message || "Upload failed", variant: "destructive" });
+      // Provide more detailed error information to help diagnose server-side 500 errors
+      const errorMessage = e?.message || "Unknown error during upload";
+      let detailedError = `Upload failed: ${errorMessage}`;
+
+      // Try to extract more details from the error
+      if (e instanceof Error) {
+        detailedError = `Upload failed: ${e.message}`;
+
+        // Check if there are specific error patterns
+        if (e.message.includes("403")) {
+          detailedError += " - Forbidden access (authentication or permissions issue)";
+        } else if (e.message.includes("413")) {
+          detailedError += " - File too large";
+        } else if (e.message.includes("File not found")) {
+          detailedError += " - Material not found in database";
+        } else if (e.message.includes("NetworkError")) {
+          detailedError += " - Network connectivity issue";
+        }
+      }
+
+      toast({ title: detailedError, variant: "destructive" });
     } finally {
       setUploading(false);
     }
@@ -424,7 +490,7 @@ function MaterialDialog({
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-2">
             <FormField control={form.control} name="title" render={({ field }) => (
-              <FormItem><FormLabel>Title *</FormLabel><FormControl><Input {...field} placeholder="Material title" disabled={!canEdit} /></FormControl><FormMessage /></FormItem>
+              <FormItem><FormLabel>Title</FormLabel><FormControl><Input {...field} placeholder="Auto-generated from files if empty" disabled={!canEdit} /></FormControl><FormMessage /></FormItem>
             )} />
 
             <FormField control={form.control} name="section" render={({ field }) => (
@@ -479,7 +545,6 @@ function MaterialDialog({
                   <div className="space-y-2">
                     <Label className="flex items-center gap-1.5"><Icon name="users" size={14} /> People with access</Label>
                     <AccessEmailsManager
-                      basePath={editing ? `/api/library/${editing.id}` : undefined}
                       emails={accessEmails}
                       onChange={setAccessEmails}
                       disabled={!canEdit}
@@ -519,7 +584,12 @@ function MaterialDialog({
                     {uploading ? <Icon name="loader-2" className="mr-1 animate-spin" size={16} /> : <Icon name="upload" className="mr-1" size={16} />} {uploadProgress.uploading ? `${uploadProgress.progress}%` : "Upload"}
                   </Button>
                 )}
-                <input ref={fileRef} type="file" accept=".pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx" className="hidden" onChange={e => { if (e.target.files?.[0]) uploadAttachment(e.target.files[0]); e.target.value = ""; }} />
+                <input ref={fileRef} type="file" accept=".pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx" multiple className="hidden" onChange={e => {
+                    if (e.target.files?.length) {
+                        uploadAttachment(Array.from(e.target.files));
+                    }
+                    e.target.value = "";
+                }} />
               </div>
               <AttachmentList attachments={attachments} canEdit={canEdit} onDelete={deleteAttachment} onView={(a) => { if (!editing) return; openViewer({ ...a, url: `/api/library/${editing.id}/attachments/${a.id}` }); }} />
             </div>
@@ -678,7 +748,6 @@ function FolderDialog({ open, onOpenChange, section, editing, onSaved, canEdit }
               <div className="space-y-2">
                 <Label className="flex items-center gap-1.5"><Icon name="users" size={14} /> People with access</Label>
                 <AccessEmailsManager
-                  basePath={editing ? `/api/library/folders/${editing.id}` : undefined}
                   emails={accessEmails}
                   onChange={setAccessEmails}
                   disabled={!canEdit}

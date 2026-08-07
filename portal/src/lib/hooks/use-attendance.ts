@@ -202,3 +202,112 @@ export function useReviewTimesheet() {
     },
   });
 }
+
+export interface PayrollPeriod {
+  id: string;
+  startDate: string;
+  endDate: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export const PAYROLL_PERIODS_KEY = ["payroll-periods"] as const;
+
+async function fetchPayrollPeriods(): Promise<PayrollPeriod[]> {
+  const res = await fetch("/api/payroll-periods");
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.error || "Failed to fetch payroll periods");
+  }
+  return res.json();
+}
+
+export function usePayrollPeriods() {
+  return useQuery({
+    queryKey: PAYROLL_PERIODS_KEY,
+    queryFn: fetchPayrollPeriods,
+  });
+}
+
+export function useCreatePayrollPeriod() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { startDate: string; endDate: string }) => {
+      const res = await fetch("/api/admin/payroll-periods", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error || "Failed to add pay period");
+      }
+      return res.json() as Promise<PayrollPeriod>;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: PAYROLL_PERIODS_KEY });
+    },
+  });
+}
+
+export function useDeletePayrollPeriod() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/admin/payroll-periods/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error || "Failed to delete pay period");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: PAYROLL_PERIODS_KEY });
+    },
+  });
+}
+
+export interface OfficialHours {
+  regular: { arrival: string; departure: string; hours: number };
+  saturday: { arrival: string; departure: string; hours: number };
+  updatedAt?: string | null;
+}
+
+export const OFFICIAL_HOURS_KEY = ["official-hours"] as const;
+
+async function fetchOfficialHours(): Promise<OfficialHours> {
+  const res = await fetch("/api/official-hours");
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.error || "Failed to fetch official hours");
+  }
+  return res.json();
+}
+
+export function useOfficialHours() {
+  return useQuery({
+    queryKey: OFFICIAL_HOURS_KEY,
+    queryFn: fetchOfficialHours,
+  });
+}
+
+export function useUpdateOfficialHours() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { regular: { arrival: string; departure: string; hours: number }; saturday: { arrival: string; departure: string; hours: number } }) => {
+      const res = await fetch("/api/admin/official-hours", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error || "Failed to update official hours");
+      }
+      return res.json() as Promise<OfficialHours>;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: OFFICIAL_HOURS_KEY });
+    },
+  });
+}

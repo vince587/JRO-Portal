@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain } = require("electron");
+const { app, BrowserWindow, dialog, ipcMain, Menu } = require("electron");
 const path = require("path");
 const { spawn } = require("child_process");
 const { startServer } = require("./server.cjs");
@@ -88,6 +88,11 @@ function createWindow(url) {
   });
 
   win.loadURL(url);
+
+  // Remove the default menu bar to make it look like a native app
+  if (!isDev) {
+    Menu.setApplicationMenu(null);
+  }
 
   if (isDev) {
     win.webContents.openDevTools();
