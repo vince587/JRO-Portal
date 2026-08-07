@@ -142,6 +142,9 @@ jobs:
           name: mac-installer
           path: |
             portal/release/*.dmg
+            portal/release/*.zip
+            portal/release/latest-mac.yml
+            portal/release/*.blockmap
           retention-days: 30
 
   # ──────────────────────────────────────────────
