@@ -50,6 +50,21 @@ jobs:
         working-directory: portal
         run: npx vite build --config vite.electron.config.ts
 
+      # The packaged app bundles api-server/.env via extraResources. The file is
+      # gitignored (contains secrets), so CI recreates it from a GitHub secret.
+      - name: Write api-server .env from secret
+        shell: bash
+        working-directory: api-server
+        env:
+          API_SERVER_ENV: ${{ secrets.API_SERVER_ENV }}
+        run: |
+          if [ -z "$API_SERVER_ENV" ]; then
+            echo "::error::API_SERVER_ENV GitHub secret is not set. Add the contents of api-server/.env as a repository secret named API_SERVER_ENV."
+            exit 1
+          fi
+          printf '%s' "$API_SERVER_ENV" > .env
+          echo "Wrote api-server/.env ($(wc -c < .env) bytes)"
+
       - name: Build Windows installer
         working-directory: portal
         run: npx electron-builder --win --publish never
@@ -127,6 +142,21 @@ jobs:
 
           # Copy into public/ so electron-builder can pick it up
           cp "$ICNS" public/logo.icns
+
+      # Same as the Windows job: recreate the gitignored api-server/.env from a
+      # GitHub secret so the packaged Mac app bundles its config.
+      - name: Write api-server .env from secret
+        shell: bash
+        working-directory: api-server
+        env:
+          API_SERVER_ENV: ${{ secrets.API_SERVER_ENV }}
+        run: |
+          if [ -z "$API_SERVER_ENV" ]; then
+            echo "::error::API_SERVER_ENV GitHub secret is not set. Add the contents of api-server/.env as a repository secret named API_SERVER_ENV."
+            exit 1
+          fi
+          printf '%s' "$API_SERVER_ENV" > .env
+          echo "Wrote api-server/.env ($(wc -c < .env) bytes)"
 
       - name: Build macOS DMG
         working-directory: portal
