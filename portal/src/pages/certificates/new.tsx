@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/lib/auth-context";
 
 const ISO_STANDARDS = ["ISO 9001", "ISO 14001", "ISO 45001", "ISO 27001"];
 const TRAINING_TYPES = [
@@ -42,6 +43,7 @@ const TRAINING_TYPES = [
 
 const EMPTY = {
   title: "",
+  company: "",
   recipientName: "",
   recipientEmail: "",
   issuedBy: "",
@@ -61,8 +63,11 @@ const EMPTY = {
 export default function CertificateNew() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [form, setForm] = useState<typeof EMPTY>(EMPTY);
   const [submitting, setSubmitting] = useState(false);
+
+  const canManageCertificates = !!user?.canManageCertificates;
 
   const set = (key: keyof typeof EMPTY, value: string) =>
     setForm(prev => ({ ...prev, [key]: value }));
@@ -93,6 +98,29 @@ export default function CertificateNew() {
     }
   };
 
+  if (!canManageCertificates) {
+    return (
+      <div className="space-y-6 animate-in fade-in duration-500 max-w-3xl">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => setLocation("/certificates")}>
+            <Icon name="arrow-left" size={16} />
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+              <Icon name="shield-check" className="text-amber-500" size={28} />
+              Add Certificate
+            </h1>
+          </div>
+        </div>
+        <Card className="neu rounded-lg">
+          <CardContent className="py-12 text-center text-muted-foreground">
+            Sorry, you don't have permission to add certificates.
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500 max-w-3xl">
       <div className="flex items-center gap-3">
@@ -108,7 +136,7 @@ export default function CertificateNew() {
         </div>
       </div>
 
-      <Card className="neu rounded-2xl">
+      <Card className="neu rounded-lg">
         <CardHeader>
           <CardTitle className="text-lg">Certificate Details</CardTitle>
           <CardDescription>Fill in the information below to issue a certificate.</CardDescription>
@@ -118,6 +146,11 @@ export default function CertificateNew() {
             <div className="space-y-2 sm:col-span-2">
               <Label>Title *</Label>
               <Input value={form.title} onChange={e => set("title", e.target.value)} placeholder="Certificate title" />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Company Name</Label>
+              <Input value={form.company} onChange={e => set("company", e.target.value)} placeholder="e.g. JMCS Training Center" />
             </div>
 
             <div className="space-y-2">
@@ -234,7 +267,7 @@ export default function CertificateNew() {
 
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setLocation("/certificates")}>Cancel</Button>
-            <Button onClick={handleSubmit} disabled={submitting}>
+            <Button onClick={handleSubmit} disabled={submitting} variant="success">
               {submitting ? <Icon name="loader-2" className="animate-spin mr-2" size={16} /> : <Icon name="save" className="mr-2" size={16} />}
               Create Certificate
             </Button>

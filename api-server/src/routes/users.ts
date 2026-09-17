@@ -34,6 +34,7 @@ function mapUser(u: UserDoc) {
     canManageCertificates: u.canManageCertificates ?? false,
     canAccessProjects: u.canAccessProjects ?? false,
     canAccessAdmin: u.canAccessAdmin ?? false,
+    canAccessDevelopers: u.canAccessDevelopers ?? false,
     photoUrl: u.photoUrl ?? null,
     mustChangePassword: u.mustChangePassword ?? false,
     createdAt: u.createdAt,
@@ -80,6 +81,7 @@ router.post("/users", requireRole("admin", "ADMIN", "IT"), async (req, res): Pro
       canManageCertificates: parsed.data.canManageCertificates ?? false,
       canAccessProjects: parsed.data.canAccessProjects ?? false,
       canAccessAdmin: parsed.data.canAccessAdmin ?? false,
+      canAccessDevelopers: parsed.data.canAccessDevelopers ?? false,
       photoUrl: parsed.data.photoUrl || null,
       mustChangePassword: true,
       createdAt: now,
@@ -179,6 +181,7 @@ router.patch("/users/:id", requireAuth, async (req, res): Promise<void> => {
     if (parsed.data.canManageCertificates !== undefined) updateData.canManageCertificates = parsed.data.canManageCertificates;
     if (parsed.data.canAccessProjects !== undefined) updateData.canAccessProjects = parsed.data.canAccessProjects;
     if (parsed.data.canAccessAdmin !== undefined) updateData.canAccessAdmin = parsed.data.canAccessAdmin;
+    if (parsed.data.canAccessDevelopers !== undefined) updateData.canAccessDevelopers = parsed.data.canAccessDevelopers;
     if (parsed.data.photoUrl !== undefined) updateData.photoUrl = parsed.data.photoUrl || null;
   } else {
     if (parsed.data.fullName !== undefined) updateData.fullName = parsed.data.fullName;

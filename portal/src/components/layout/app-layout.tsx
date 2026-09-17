@@ -50,6 +50,9 @@ const PAGE_TITLES: Record<string, string> = {
   "/employee": "Employee Dashboard",
   "/admin": "Administration",
   "/developers": "Developers",
+  "/announcements": "Announcements",
+  "/users": "Users",
+  "/reports": "Reports",
 };
 
 const PAGE_ICONS: Record<string, string> = {
@@ -65,11 +68,14 @@ const PAGE_ICONS: Record<string, string> = {
   "/employee": "badge-check",
   "/admin": "building-2",
   "/developers": "code",
+  "/announcements": "megaphone",
+  "/users": "users",
+  "/reports": "chart-pie",
 };
 
 function formatRole(role?: string | null) {
   if (!role) return "Member";
-  if (role.toLowerCase() === "manager") return "Officer";
+  if (["manager", "officer"].includes(role.toLowerCase())) return "Officer";
   return role.charAt(0).toUpperCase() + role.slice(1);
 }
 
@@ -81,13 +87,14 @@ function getCurrentPage(location: string): { title: string; icon: string } {
 
 function useNavItems() {
   const { user } = useAuth();
-  const isAdmin = user?.roles?.some(r => ["admin", "ADMIN", "IT", "manager"].includes(r)) || ["admin", "ADMIN", "IT", "manager"].includes(user?.role ?? "");
+  const isAdmin = user?.roles?.some(r => ["admin", "ADMIN", "IT", "officer"].includes(r)) || ["admin", "ADMIN", "IT", "officer"].includes(user?.role ?? "") || !!user?.canAccessAdmin;
+  const canDevTools = user?.roles?.some(r => ["admin", "ADMIN", "IT"].includes(r)) || ["admin", "ADMIN", "IT"].includes(user?.role ?? "") || !!user?.canAccessDevelopers;
   const canSis = isAdmin || user?.canAccessSis;
   const canJmcs = isAdmin || user?.canAccessJmcs;
   const hasBoth = canSis && canJmcs;
 
-  const contractsUrl = hasBoth ? "/contracts" : canSis ? "/contracts/sis" : "/contracts/jmcs";
-  const contractsTitle = hasBoth ? "Contracts" : canSis ? "SIS Contracts" : "JMCS Contracts";
+  const contractsUrl = "/contracts";
+  const contractsTitle = "Contracts";
 
   const certsUrl = hasBoth ? "/certificates" : canSis ? "/certificates/iso" : "/certificates/training";
   const certsTitle = hasBoth ? "Certificates" : canSis ? "ISO Certificates" : "Training Certificates";
@@ -100,6 +107,11 @@ function useNavItems() {
     { title: "Calendar", url: "/calendar", icon: "calendar-days" },
     { title: "Library", url: "/library", icon: "library" },
     { title: "Leads", url: "/leads", icon: "target" },
+    { title: "Announcements", url: "/announcements", icon: "megaphone" },
+    ...(canDevTools ? [
+      { title: "Users", url: "/users", icon: "users" },
+      { title: "Reports", url: "/reports", icon: "chart-pie" },
+    ] : []),
   ];
 }
 
@@ -145,7 +157,7 @@ function SidebarLogo() {
 
 function SidebarBadge({ value }: { value: number | string }) {
   return (
-    <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-gray-100 px-1.5 text-xs font-medium text-gray-500">
+    <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary/10 px-1.5 text-xs font-medium text-primary dark:text-sidebar-accent-foreground">
       {value}
     </span>
   );
@@ -166,18 +178,18 @@ function SidebarNavItem({ item, active, collapsed }: { item: NavItem; active: bo
         <Link
           href={item.url}
           className={[
-            "relative flex h-10 w-10 items-center justify-center rounded-lg transition-all duration-200",
-            active ? "neu-inset text-gray-900" : "text-gray-500 hover:bg-white/40 hover:text-gray-900",
+            "relative flex h-9 w-9 items-center justify-center rounded-md transition-colors duration-150",
+            active ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
           ].join(" ")}
         >
-          <Icon name={item.icon} size={20} />
+          <Icon name={item.icon} size={18} />
           {item.badge !== undefined && (
             <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-red-500" />
           )}
         </Link>
-        <span className="pointer-events-none absolute left-full top-1/2 z-20 ml-3 -translate-y-1/2 whitespace-nowrap rounded-md bg-gray-800 px-2.5 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity duration-200 group-hover/item:opacity-100">
+        <span className="pointer-events-none absolute left-full top-1/2 z-20 ml-3 -translate-y-1/2 whitespace-nowrap rounded-md bg-zinc-800 px-2.5 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity duration-200 group-hover/item:opacity-100">
           {item.title}
-          <span className="absolute -left-1 top-1/2 h-2 w-2 -translate-y-1/2 rotate-45 bg-gray-800" />
+          <span className="absolute -left-1 top-1/2 h-2 w-2 -translate-y-1/2 rotate-45 bg-zinc-800" />
         </span>
       </div>
     );
@@ -186,11 +198,21 @@ function SidebarNavItem({ item, active, collapsed }: { item: NavItem; active: bo
     <Link
       href={item.url}
       className={[
-        "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all duration-200",
-        active ? "neu-inset font-medium text-gray-900" : "text-gray-600 hover:bg-white/40 hover:text-gray-900",
+        "group/nav relative flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] leading-tight transition-colors duration-150",
+        active ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground" : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
       ].join(" ")}
     >
-      <Icon name={item.icon} size={18} className="shrink-0 text-gray-500" />
+      {active && (
+        <span aria-hidden className="absolute -left-0 top-0 h-full w-[3px] rounded-r-full bg-primary" />
+      )}
+      <Icon
+        name={item.icon}
+        size={16}
+        className={[
+          "shrink-0 transition-colors duration-150",
+          active ? "text-primary" : "text-sidebar-foreground/50 group-hover/nav:text-sidebar-foreground",
+        ].join(" ")}
+      />
       <span className="flex-1 truncate">{item.title}</span>
       {item.badge !== undefined && <SidebarBadge value={item.badge} />}
     </Link>
@@ -198,9 +220,9 @@ function SidebarNavItem({ item, active, collapsed }: { item: NavItem; active: bo
 }
 
 function SidebarSectionLabel({ children, collapsed }: { children: ReactNode; collapsed: boolean }) {
-  if (collapsed) return <div className="py-2" />;
+  if (collapsed) return <div className="py-1.5" />;
   return (
-    <p className="px-3 pb-2 pt-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+    <p className="px-2.5 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/40">
       {children}
     </p>
   );
@@ -243,11 +265,13 @@ function AppSidebar({ collapsed = false }: { collapsed?: boolean }) {
     location === url || (url !== "/" && location.startsWith(url));
 
   const isAdmin =
-    user?.roles?.some(r => ["admin", "ADMIN", "IT", "manager"].includes(r)) ||
-    ["admin", "ADMIN", "IT", "manager"].includes(user?.role ?? "");
+    user?.roles?.some(r => ["admin", "ADMIN", "IT", "officer"].includes(r)) ||
+    ["admin", "ADMIN", "IT", "officer"].includes(user?.role ?? "") ||
+    !!user?.canAccessAdmin;
   const canDeveloper =
     user?.roles?.some(r => ["IT", "ADMIN", "admin"].includes(r)) ||
-    ["IT", "ADMIN", "admin"].includes(user?.role ?? "");
+    ["IT", "ADMIN", "admin"].includes(user?.role ?? "") ||
+    !!user?.canAccessDevelopers;
   const canAdminPage =
     user?.roles?.some(r => ["ADMIN", "admin"].includes(r)) ||
     ["ADMIN", "admin"].includes(user?.role ?? "") ||
@@ -276,25 +300,25 @@ function AppSidebar({ collapsed = false }: { collapsed?: boolean }) {
   }));
 
   return (
-    <aside
-      className={[
-        "flex h-full flex-col rounded-xl neu transition-all duration-300",
-        collapsed ? "w-16 p-3" : "w-64 p-4",
-      ].join(" ")}
+<aside
+       className={[
+         "relative flex h-full flex-col overflow-hidden border-r border-sidebar-border bg-sidebar transition-all duration-300 scrollbar-hide",
+         collapsed ? "w-16 p-2.5" : "w-64 p-3",
+       ].join(" ")}
     >
       {/* Header */}
-      <div className={collapsed ? "flex justify-center pb-5" : "flex items-center gap-3 px-1 pb-5"}>
+      <div className={collapsed ? "relative z-10 flex justify-center pb-4" : "relative z-10 flex items-center gap-3 px-1 pb-4"}>
         <SidebarLogo />
         {!collapsed && (
           <div className="leading-tight">
-            <p className="text-sm font-bold text-gray-800">Internal Portal</p>
+            <p className="font-serif text-base font-bold text-sidebar-foreground">Internal Portal</p>
           </div>
         )}
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-1 overflow-y-auto">
-        <SidebarSectionLabel collapsed={collapsed}>Menu</SidebarSectionLabel>
+       <nav className="relative z-10 flex-1 space-y-0.5 overflow-y-auto scrollbar-hide">
+         <SidebarSectionLabel collapsed={collapsed}>Menu</SidebarSectionLabel>
         {navItems.map((item) => (
           <SidebarNavItem
             key={item.url}
@@ -336,17 +360,17 @@ function AppSidebar({ collapsed = false }: { collapsed?: boolean }) {
       </nav>
 
       {/* Footer / Profile */}
-      <div className="mt-auto shrink-0 border-t border-gray-100 pt-4">
+      <div className="relative z-10 mt-auto shrink-0 border-t border-sidebar-border pt-4">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
               type="button"
               className={[
-                "flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-gray-50",
+                "flex w-full items-center gap-3 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-sidebar-accent/60",
                 collapsed ? "justify-center" : "",
               ].join(" ")}
             >
-              <Avatar className="h-9 w-9 shrink-0 ring-1 ring-gray-200">
+              <Avatar className="h-9 w-9 shrink-0 ring-1 ring-zinc-200">
                 <AvatarImage src={(user as any)?.photoUrl || undefined} alt={user?.fullName || user?.username} />
                 <AvatarFallback className="bg-red-500 text-sm font-semibold text-white">
                   {getInitials(user?.fullName || user?.username)}
@@ -355,10 +379,10 @@ function AppSidebar({ collapsed = false }: { collapsed?: boolean }) {
               {!collapsed && (
                 <>
                   <div className="min-w-0 flex-1 leading-tight">
-                    <p className="truncate text-sm font-medium text-gray-800">{user?.fullName || user?.username}</p>
-                    <p className="truncate text-xs text-gray-400">{formatRole(user?.role)}</p>
+                    <p className="truncate text-sm font-medium text-sidebar-foreground">{user?.fullName || user?.username}</p>
+                    <p className="truncate text-xs text-sidebar-foreground/60">{formatRole(user?.role)}</p>
                   </div>
-                  <Icon name="more-vertical" size={18} className="text-gray-400" />
+                  <Icon name="more-vertical" size={18} className="text-sidebar-foreground/60" />
                 </>
               )}
             </button>
@@ -381,11 +405,11 @@ function SidebarShell() {
   const { state, openMobile, setOpenMobile } = useSidebar();
   return (
     <>
-      <div className="hidden h-screen shrink-0 p-3 md:block">
+      <div className="hidden h-screen shrink-0 md:block">
         <AppSidebar collapsed={state === "collapsed"} />
       </div>
       <Sheet open={openMobile} onOpenChange={setOpenMobile}>
-        <SheetContent side="left" className="w-64 border-0 bg-transparent p-3 shadow-none">
+        <SheetContent side="left" className="w-64 border-0 bg-transparent p-3 shadow-none scrollbar-hide">
           <SheetHeader className="sr-only">
             <SheetTitle>Navigation</SheetTitle>
           </SheetHeader>
@@ -482,25 +506,39 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <SidebarProvider>
-      <div className="flex h-screen w-full bg-[#f3f4f6] overflow-hidden">
+      <div className="flex h-screen w-full bg-background overflow-hidden">
         <SidebarShell />
         <div className="flex flex-1 flex-col min-w-0 overflow-hidden relative">
-          <header className="h-14 shrink-0 border-b border-border bg-white/60 dark:bg-zinc-900/60 backdrop-blur-lg flex items-center px-4 md:px-6 sticky top-0 z-10">
-            <SidebarTrigger className="mr-4" />
-            <div className="flex items-center gap-2.5 text-sm text-muted-foreground mr-auto">
-              <span className="font-medium text-foreground/80">{page.title}</span>
+          <header className="relative h-16 shrink-0 border-b border-border/70 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-2xl flex items-center px-4 md:px-6 sticky top-0 z-10 overflow-hidden">
+            <div aria-hidden className="pointer-events-none absolute inset-0 -z-0 opacity-60">
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+              <div className="absolute -top-16 left-1/3 h-40 w-40 rounded-full bg-primary/10 blur-3xl" />
+              <div className="absolute -top-20 right-1/4 h-44 w-44 rounded-full bg-sky-400/10 blur-3xl" />
+              <div className="absolute inset-0" style={{ background: "linear-gradient(90deg, hsl(20 60% 96%) 0%, transparent 35%, transparent 65%, hsl(210 60% 95%) 100%)" }} />
             </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative text-muted-foreground ml-2">
-                  <Icon name="bell" size={20} />
-                  {alertCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white px-1">
-                      {dangerCount > 0 ? dangerCount : alertCount}
-                    </span>
-                  )}
-                </Button>
-              </DropdownMenuTrigger>
+            <SidebarTrigger className="relative z-10 mr-4" />
+            <div className="relative z-10 flex items-center gap-3 mr-auto">
+              <div className="leading-none">
+                <h1 className="text-lg font-semibold tracking-tight text-foreground">{page.title}</h1>
+              </div>
+            </div>
+            <div className="relative z-10 flex items-center gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="relative rounded-full text-muted-foreground hover:bg-foreground/5 hover:text-foreground transition-colors"
+                    aria-label="Notifications"
+                  >
+                    <Icon name="bell" size={20} />
+                    {alertCount > 0 && (
+                      <span className="absolute top-0.5 right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white px-1 ring-2 ring-white dark:ring-zinc-900">
+                        {dangerCount > 0 ? dangerCount : alertCount}
+                      </span>
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-80 max-h-96 overflow-y-auto">
                   <DropdownMenuLabel className="flex items-center gap-2">
                     <Icon name="bell" size={16} />
@@ -555,9 +593,10 @@ export function AppLayout({ children }: { children: ReactNode }) {
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
+            </div>
           </header>
-          <main className="flex-1 overflow-auto bg-[#f3f4f6] p-4 md:p-6 lg:p-8">
-            <div className="mx-auto max-w-7xl h-full">
+          <main className="flex-1 overflow-auto paper-canvas p-4 md:p-6 lg:p-8">
+            <div className="mx-auto max-w-7xl h-full page-enter">
               {children}
             </div>
           </main>
@@ -605,7 +644,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <CommandGroup heading="Users">
               {searchResults.users.map((r: any) => (
                 <CommandItem key={`u-${r.id}`} onSelect={() => { setSearchOpen(false); }}>
-                  <Icon name="users" size={16} className="mr-2 text-slate-500" />
+                  <Icon name="users" size={16} className="mr-2 text-muted-foreground" />
                   <span>{r.title}</span>
                   {r.subtitle && <span className="text-xs text-muted-foreground ml-2">({r.subtitle})</span>}
                 </CommandItem>

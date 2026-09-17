@@ -34,7 +34,7 @@ export const LoginResponse = zod.object({
   "username": zod.string(),
   "email": zod.string(),
   "fullName": zod.string().nullish(),
-  "role": zod.enum(['admin', 'manager', 'staff', 'ADMIN', 'IT']),
+  "role": zod.enum(['admin', 'manager', 'officer', 'staff', 'ADMIN', 'IT']),
   "roles": zod.array(zod.string()).optional(),
   "department": zod.string().nullish(),
   "isActive": zod.boolean().optional(),
@@ -46,6 +46,7 @@ export const LoginResponse = zod.object({
   "canManageCertificates": zod.boolean().optional(),
   "canAccessProjects": zod.boolean().optional(),
   "canAccessAdmin": zod.boolean().optional(),
+  "canAccessDevelopers": zod.boolean().optional(),
   "photoUrl": zod.string().nullish(),
   "createdAt": zod.string()
 })
@@ -65,7 +66,7 @@ export const GetMeResponse = zod.object({
   "username": zod.string(),
   "email": zod.string(),
   "fullName": zod.string().nullish(),
-  "role": zod.enum(['admin', 'manager', 'staff', 'ADMIN', 'IT']),
+  "role": zod.enum(['admin', 'manager', 'officer', 'staff', 'ADMIN', 'IT']),
   "roles": zod.array(zod.string()).optional(),
   "department": zod.string().nullish(),
   "isActive": zod.boolean().optional(),
@@ -77,6 +78,7 @@ export const GetMeResponse = zod.object({
   "canManageCertificates": zod.boolean().optional(),
   "canAccessProjects": zod.boolean().optional(),
   "canAccessAdmin": zod.boolean().optional(),
+  "canAccessDevelopers": zod.boolean().optional(),
   "photoUrl": zod.string().nullish(),
   "createdAt": zod.string()
 })
@@ -284,6 +286,7 @@ export const ListCertificatesResponse = zod.array(ListCertificatesResponseItem)
 
 export const CreateCertificateBody = zod.object({
   "title": zod.string().min(1),
+  "company": zod.string().optional(),
   "recipientName": zod.string(),
   "recipientEmail": zod.string().optional(),
   "issuedBy": zod.string(),
@@ -304,6 +307,7 @@ export const CreateCertificateBody = zod.object({
 export const CreateCertificateResponse = zod.object({
   "id": zod.number(),
   "title": zod.string(),
+  "company": zod.string().nullish(),
   "recipientName": zod.string(),
   "recipientEmail": zod.string().nullish(),
   "issuedBy": zod.string(),
@@ -334,6 +338,7 @@ export const GetCertificateParams = zod.object({
 export const GetCertificateResponse = zod.object({
   "id": zod.string(),
   "title": zod.string(),
+  "company": zod.string().nullish(),
   "recipientName": zod.string(),
   "recipientEmail": zod.string().nullish(),
   "issuedBy": zod.string(),
@@ -365,6 +370,7 @@ export const UpdateCertificateParams = zod.object({
 
 export const UpdateCertificateBody = zod.object({
   "title": zod.string().optional(),
+  "company": zod.string().optional(),
   "recipientName": zod.string().optional(),
   "recipientEmail": zod.string().optional(),
   "issuedBy": zod.string().optional(),
@@ -573,7 +579,7 @@ export const ListEventsResponseItem = zod.object({
   "startDate": zod.string(),
   "endDate": zod.string().nullish(),
   "allDay": zod.boolean().optional(),
-  "eventType": zod.enum(['meeting', 'deadline', 'training', 'review', 'other']),
+  "eventType": zod.enum(['meeting', 'deadline', 'training', 'review', 'audit', 'internal-audit', 'lead-audit', 'other']),
   "location": zod.string().nullish(),
   "relatedTo": zod.string().nullish(),
   "createdAt": zod.string()
@@ -593,7 +599,7 @@ export const CreateEventBody = zod.object({
   "startDate": zod.string(),
   "endDate": zod.string().optional(),
   "allDay": zod.boolean().optional(),
-  "eventType": zod.enum(['meeting', 'deadline', 'training', 'review', 'other']),
+  "eventType": zod.enum(['meeting', 'deadline', 'training', 'review', 'audit', 'internal-audit', 'lead-audit', 'other']),
   "location": zod.string().optional(),
   "relatedTo": zod.string().optional(),
   "status": zod.enum(['confirmed', 'tentative', 'cancelled']).optional()
@@ -606,7 +612,7 @@ export const CreateEventResponse = zod.object({
   "startDate": zod.string(),
   "endDate": zod.string().nullish(),
   "allDay": zod.boolean().optional(),
-  "eventType": zod.enum(['meeting', 'deadline', 'training', 'review', 'other']),
+  "eventType": zod.enum(['meeting', 'deadline', 'training', 'review', 'audit', 'internal-audit', 'lead-audit', 'other']),
   "location": zod.string().nullish(),
   "relatedTo": zod.string().nullish(),
   "status": zod.enum(['confirmed', 'tentative', 'cancelled']).nullish(),
@@ -628,7 +634,7 @@ export const GetEventResponse = zod.object({
   "startDate": zod.string(),
   "endDate": zod.string().nullish(),
   "allDay": zod.boolean().optional(),
-  "eventType": zod.enum(['meeting', 'deadline', 'training', 'review', 'other']),
+  "eventType": zod.enum(['meeting', 'deadline', 'training', 'review', 'audit', 'internal-audit', 'lead-audit', 'other']),
   "location": zod.string().nullish(),
   "relatedTo": zod.string().nullish(),
   "status": zod.enum(['confirmed', 'tentative', 'cancelled']).nullish(),
@@ -649,7 +655,7 @@ export const UpdateEventBody = zod.object({
   "startDate": zod.string().optional(),
   "endDate": zod.string().optional(),
   "allDay": zod.boolean().optional(),
-  "eventType": zod.enum(['meeting', 'deadline', 'training', 'review', 'other']).optional(),
+  "eventType": zod.enum(['meeting', 'deadline', 'training', 'review', 'audit', 'internal-audit', 'lead-audit', 'other']).optional(),
   "location": zod.string().optional(),
   "relatedTo": zod.string().optional(),
   "status": zod.enum(['confirmed', 'tentative', 'cancelled']).optional()
@@ -662,7 +668,7 @@ export const UpdateEventResponse = zod.object({
   "startDate": zod.string(),
   "endDate": zod.string().nullish(),
   "allDay": zod.boolean().optional(),
-  "eventType": zod.enum(['meeting', 'deadline', 'training', 'review', 'other']),
+  "eventType": zod.enum(['meeting', 'deadline', 'training', 'review', 'audit', 'internal-audit', 'lead-audit', 'other']),
   "location": zod.string().nullish(),
   "relatedTo": zod.string().nullish(),
   "status": zod.enum(['confirmed', 'tentative', 'cancelled']).nullish(),
@@ -688,7 +694,7 @@ export const ListUsersResponseItem = zod.object({
   "username": zod.string(),
   "email": zod.string(),
   "fullName": zod.string().nullish(),
-  "role": zod.enum(['admin', 'manager', 'staff', 'ADMIN', 'IT']),
+  "role": zod.enum(['admin', 'manager', 'officer', 'staff', 'ADMIN', 'IT']),
   "roles": zod.array(zod.string()).optional(),
   "department": zod.string().nullish(),
   "isActive": zod.boolean().optional(),
@@ -700,6 +706,7 @@ export const ListUsersResponseItem = zod.object({
   "canManageCertificates": zod.boolean().optional(),
   "canAccessProjects": zod.boolean().optional(),
   "canAccessAdmin": zod.boolean().optional(),
+  "canAccessDevelopers": zod.boolean().optional(),
   "photoUrl": zod.string().nullish(),
   "createdAt": zod.string()
 })
@@ -719,8 +726,8 @@ export const CreateUserBody = zod.object({
   "email": zod.string().email(),
   "password": zod.string().min(createUserBodyPasswordMin),
   "fullName": zod.string().optional(),
-  "role": zod.enum(['admin', 'manager', 'staff', 'ADMIN', 'IT']),
-  "roles": zod.array(zod.enum(['admin', 'manager', 'staff', 'ADMIN', 'IT'])).optional(),
+  "role": zod.enum(['admin', 'manager', 'officer', 'staff', 'ADMIN', 'IT']),
+  "roles": zod.array(zod.enum(['admin', 'manager', 'officer', 'staff', 'ADMIN', 'IT'])).optional(),
   "department": zod.string().optional(),
   "photoUrl": zod.string().optional(),
   "canAccessSis": zod.boolean().optional(),
@@ -730,7 +737,8 @@ export const CreateUserBody = zod.object({
   "canManageContracts": zod.boolean().optional(),
   "canManageCertificates": zod.boolean().optional(),
   "canAccessProjects": zod.boolean().optional(),
-  "canAccessAdmin": zod.boolean().optional()
+  "canAccessAdmin": zod.boolean().optional(),
+  "canAccessDevelopers": zod.boolean().optional()
 })
 
 export const CreateUserResponse = zod.object({
@@ -738,7 +746,7 @@ export const CreateUserResponse = zod.object({
   "username": zod.string(),
   "email": zod.string(),
   "fullName": zod.string().nullish(),
-  "role": zod.enum(['admin', 'manager', 'staff', 'ADMIN', 'IT']),
+  "role": zod.enum(['admin', 'manager', 'officer', 'staff', 'ADMIN', 'IT']),
   "roles": zod.array(zod.string()),
   "department": zod.string().nullish(),
   "isActive": zod.boolean().optional(),
@@ -750,6 +758,7 @@ export const CreateUserResponse = zod.object({
   "canManageCertificates": zod.boolean().optional(),
   "canAccessProjects": zod.boolean().optional(),
   "canAccessAdmin": zod.boolean().optional(),
+  "canAccessDevelopers": zod.boolean().optional(),
   "photoUrl": zod.string().nullish(),
   "createdAt": zod.string()
 })
@@ -767,7 +776,7 @@ export const GetUserResponse = zod.object({
   "username": zod.string(),
   "email": zod.string(),
   "fullName": zod.string().nullish(),
-  "role": zod.enum(['admin', 'manager', 'staff', 'ADMIN', 'IT']),
+  "role": zod.enum(['admin', 'manager', 'officer', 'staff', 'ADMIN', 'IT']),
   "roles": zod.array(zod.string()),
   "department": zod.string().nullish(),
   "isActive": zod.boolean().optional(),
@@ -779,6 +788,7 @@ export const GetUserResponse = zod.object({
   "canManageCertificates": zod.boolean().optional(),
   "canAccessProjects": zod.boolean().optional(),
   "canAccessAdmin": zod.boolean().optional(),
+  "canAccessDevelopers": zod.boolean().optional(),
   "photoUrl": zod.string().nullish(),
   "createdAt": zod.string()
 })
@@ -794,8 +804,8 @@ export const UpdateUserParams = zod.object({
 export const UpdateUserBody = zod.object({
   "email": zod.string().email().optional(),
   "fullName": zod.string().optional(),
-  "role": zod.enum(['admin', 'manager', 'staff', 'ADMIN', 'IT']).optional(),
-  "roles": zod.array(zod.enum(['admin', 'manager', 'staff', 'ADMIN', 'IT'])).optional(),
+  "role": zod.enum(['admin', 'manager', 'officer', 'staff', 'ADMIN', 'IT']).optional(),
+  "roles": zod.array(zod.enum(['admin', 'manager', 'officer', 'staff', 'ADMIN', 'IT'])).optional(),
   "department": zod.string().optional(),
   "isActive": zod.boolean().optional(),
   "canAccessSis": zod.boolean().optional(),
@@ -806,6 +816,7 @@ export const UpdateUserBody = zod.object({
   "canManageCertificates": zod.boolean().optional(),
   "canAccessProjects": zod.boolean().optional(),
   "canAccessAdmin": zod.boolean().optional(),
+  "canAccessDevelopers": zod.boolean().optional(),
   "photoUrl": zod.string().optional(),
   "password": zod.string().optional(),
   "currentPassword": zod.string().optional()
@@ -816,7 +827,7 @@ export const UpdateUserResponse = zod.object({
   "username": zod.string(),
   "email": zod.string(),
   "fullName": zod.string().nullish(),
-  "role": zod.enum(['admin', 'manager', 'staff', 'ADMIN', 'IT']),
+  "role": zod.enum(['admin', 'manager', 'officer', 'staff', 'ADMIN', 'IT']),
   "roles": zod.array(zod.string()),
   "department": zod.string().nullish(),
   "isActive": zod.boolean().optional(),
@@ -828,6 +839,7 @@ export const UpdateUserResponse = zod.object({
   "canManageCertificates": zod.boolean().optional(),
   "canAccessProjects": zod.boolean().optional(),
   "canAccessAdmin": zod.boolean().optional(),
+  "canAccessDevelopers": zod.boolean().optional(),
   "photoUrl": zod.string().nullish(),
   "createdAt": zod.string()
 })

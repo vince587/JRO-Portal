@@ -14,5 +14,8 @@ export const CalendarEventInputEventType = {
   deadline: 'deadline',
   training: 'training',
   review: 'review',
+  audit: 'audit',
+  'internal-audit': 'internal-audit',
+  'lead-audit': 'lead-audit',
   other: 'other',
 } as const;

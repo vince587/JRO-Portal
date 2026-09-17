@@ -14,7 +14,7 @@ import { UploadProgressOverlay, SaveProgressIndicator } from "@/components/uploa
 
 function formatRole(role?: string | null) {
   if (!role) return "Member";
-  if (role.toLowerCase() === "manager") return "Officer";
+  if (["manager", "officer"].includes(role.toLowerCase())) return "Officer";
   return role.charAt(0).toUpperCase() + role.slice(1);
 }
 
@@ -120,11 +120,10 @@ export default function Profile() {
   return (
     <div className="space-y-6 pb-8 animate-in fade-in duration-500 max-w-2xl">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">My Profile</h1>
-        <p className="text-muted-foreground mt-1">Manage your account information and preferences.</p>
+        <p className="text-muted-foreground">Manage your account information and preferences.</p>
       </div>
 
-      <Card className="neu rounded-2xl">
+      <Card className="neu rounded-lg">
         <CardHeader className="border-b">
           <CardTitle className="flex items-center gap-2">
             <Icon name="user" className="text-primary" size={20} />
@@ -177,7 +176,7 @@ export default function Profile() {
         </CardContent>
       </Card>
 
-      <Card className="neu rounded-2xl">
+      <Card className="neu rounded-lg">
         <CardHeader className="border-b">
           <CardTitle className="flex items-center gap-2">
             <Icon name="lock" className="text-primary" size={20} />

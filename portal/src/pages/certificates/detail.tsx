@@ -175,6 +175,7 @@ const TRAINING_TYPES = [
 
 const certificateSchema = z.object({
   title: z.string().min(1, "Title is required"),
+  company: z.string().optional().nullable(),
   recipientName: z.string().min(1, "Recipient name is required"),
   recipientEmail: z.string().email("Invalid email").optional().or(z.literal("")),
   issuedBy: z.string().min(1, "Issuing authority is required"),
@@ -254,6 +255,7 @@ export default function CertificateDetail() {
     resolver: zodResolver(certificateSchema),
     defaultValues: {
       title: "",
+      company: "",
       recipientName: "",
       recipientEmail: "",
       issuedBy: "",
@@ -281,6 +283,7 @@ export default function CertificateDetail() {
       initRef.current = certificate.id;
       form.reset({
         title: certificate.title ?? "",
+        company: certificate.company || "",
         recipientName: certificate.recipientName ?? "",
         recipientEmail: certificate.recipientEmail || "",
         issuedBy: certificate.issuedBy ?? "",
@@ -433,7 +436,7 @@ export default function CertificateDetail() {
             <Skeleton className="h-4 w-32" />
           </div>
         </div>
-        <Card className="neu rounded-2xl">
+        <Card className="neu rounded-lg">
           <CardContent className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {Array(6).fill(0).map((_, i) => (
@@ -521,6 +524,12 @@ export default function CertificateDetail() {
                 <Badge variant="outline" className="ml-2 capitalize">{certificate?.category || "training"}</Badge>
               </p>
             )}
+            {!isNew && certificate?.company && (
+              <p className="text-xs text-muted-foreground/60 mt-0.5">
+                <Icon name="building" className="inline mr-1" size={12} />
+                {certificate.company}
+              </p>
+            )}
             {!isNew && (certificate as any)?.createdByName && (
               <p className="text-xs text-muted-foreground/60 mt-0.5">
                 Created by {(certificate as any).createdByName}
@@ -568,7 +577,7 @@ export default function CertificateDetail() {
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <Card className="neu rounded-2xl">
+          <Card className="neu rounded-lg">
             <CardHeader className="border-b neu-inset rounded-xl">
               <CardTitle className="text-lg flex items-center gap-2">
                 <Icon name="shield-check" className="text-amber-500" size={20} />
@@ -722,6 +731,23 @@ export default function CertificateDetail() {
 
                 <FormField
                   control={form.control}
+                  name="company"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2">
+                        <Icon name="building" className="text-muted-foreground" size={16} />
+                        Company Name
+                      </FormLabel>
+                      <FormControl>
+                        <Input {...field} value={field.value || ""} disabled={!isEditing} placeholder="e.g. JMCS Training Center" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
                   name="recipientName"
                   render={({ field }) => (
                     <FormItem>
@@ -853,7 +879,7 @@ export default function CertificateDetail() {
             </CardContent>
           </Card>
 
-          <Card className="neu rounded-2xl">
+          <Card className="neu rounded-lg">
             <CardHeader className="border-b neu-inset rounded-xl">
               <CardTitle className="text-lg flex items-center gap-2">
                 <Icon name={category === "iso" ? "file-text" : "qr-code"} className="text-primary" size={20} />

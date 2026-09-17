@@ -4,8 +4,8 @@ import { Icon } from "@/components/ui/icon"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
+import { UserAvatar } from "@/components/user-avatar";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -59,12 +59,48 @@ import { SaveProgressIndicator } from "@/components/upload-progress";
 
 const LEAD_STATUSES = ["new", "contacted", "qualified", "lost"];
 
+interface LeadSummary {
+  total: number;
+  thisMonth: number;
+  byType: Record<string, number>;
+  byStatus: Record<string, number>;
+  byTypeAndStatus: Record<string, Record<string, number>>;
+  withPhone: number;
+  withEmail: number;
+  byTypeWithPhone: Record<string, number>;
+  byTypeWithEmail: Record<string, number>;
+}
+
 const statusColor: Record<string, string> = {
-  new: "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300",
+  new: "bg-slate-100 text-foreground border-border dark:bg-slate-800 dark:text-muted-foreground/60",
   contacted: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300",
   qualified: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300",
   lost: "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300",
 };
+
+const QUICK_REMARKS = ["Called", "Emailed", "Called & Emailed", "No Answer", "Follow Up", "Qualified", "Lost"];
+
+function RemarkInput({ lead, onSave }: { lead: any; onSave: (id: string, notes: string) => void }) {
+  const current = lead.notes || "";
+  const options = QUICK_REMARKS.includes(current) ? QUICK_REMARKS : [current, ...QUICK_REMARKS];
+  return (
+    <Select value={current ? options.find(o => o === current) : undefined} onValueChange={(v) => {
+      if (v !== current) onSave(lead.id, v);
+    }}>
+      <SelectTrigger className="h-7 text-xs w-[130px]">
+        <SelectValue placeholder="Remark…" />
+      </SelectTrigger>
+      <SelectContent>
+        {current && !QUICK_REMARKS.includes(current) && (
+          <SelectItem value={current} className="italic">{current}</SelectItem>
+        )}
+        {QUICK_REMARKS.map((r) => (
+          <SelectItem key={r} value={r}>{r}</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
 
 function EditLeadDialog({
   lead,
@@ -80,6 +116,7 @@ function EditLeadDialog({
   const { toast } = useToast();
   const [companyName, setCompanyName] = useState(lead?.companyName || "");
   const [contactPerson, setContactPerson] = useState(lead?.contactPerson || "");
+  const [position, setPosition] = useState(lead?.position || "");
   const [email, setEmail] = useState(lead?.email || "");
   const [phone, setPhone] = useState(lead?.phone || "");
   const [serviceInterest, setServiceInterest] = useState(lead?.serviceInterest || "");
@@ -90,6 +127,7 @@ function EditLeadDialog({
   if (lead && !companyName && open) {
     setCompanyName(lead.companyName);
     setContactPerson(lead.contactPerson);
+    setPosition(lead.position || "");
     setEmail(lead.email || "");
     setPhone(lead.phone || "");
     setServiceInterest(lead.serviceInterest || "");
@@ -103,7 +141,7 @@ function EditLeadDialog({
       const res = await fetch(`/api/leads/${lead.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ companyName, contactPerson, email, phone, serviceInterest, notes, status }),
+        body: JSON.stringify({ companyName, contactPerson, position, email, phone, serviceInterest, notes, status }),
       });
       if (!res.ok) throw new Error("Failed to update");
       toast({ title: "Lead updated" });
@@ -147,6 +185,10 @@ function EditLeadDialog({
             <Label>Contact Person</Label>
             <Input value={contactPerson} onChange={e => setContactPerson(e.target.value)} />
           </div>
+          <div className="space-y-2">
+            <Label>Contact Position</Label>
+            <Input value={position} onChange={e => setPosition(e.target.value)} placeholder="e.g. Purchasing Manager" />
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Email</Label>
@@ -173,8 +215,18 @@ function EditLeadDialog({
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>Notes</Label>
-            <Textarea value={notes} onChange={e => setNotes(e.target.value)} className="min-h-[80px]" />
+            <Label>Remarks</Label>
+            <Select value={notes} onValueChange={setNotes}>
+              <SelectTrigger><SelectValue placeholder="Select remark" /></SelectTrigger>
+              <SelectContent>
+                {notes && !QUICK_REMARKS.includes(notes) && (
+                  <SelectItem value={notes} className="italic">{notes}</SelectItem>
+                )}
+                {QUICK_REMARKS.map(r => (
+                  <SelectItem key={r} value={r}>{r}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
         <DialogFooter className="justify-between">
@@ -195,6 +247,7 @@ export default function Leads() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState<"ALL" | "JMCS" | "SIS">("ALL");
+  const [periodFilter, setPeriodFilter] = useState("");
   const [showAddRow, setShowAddRow] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<any | null>(null);
@@ -202,17 +255,19 @@ export default function Leads() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  const canCreateJmcsLead = user?.canAccessJmcs;
-  const canCreateSisLead = user?.canAccessSis || user?.roles?.some(r => ["admin", "ADMIN", "IT", "manager"].includes(r)) || ["admin", "ADMIN", "IT", "manager"].includes(user?.role ?? "");
+  const canCreateJmcsLead = user?.canAccessJmcs || user?.roles?.some(r => ["admin", "ADMIN", "IT", "officer"].includes(r)) || ["admin", "ADMIN", "IT", "officer"].includes(user?.role ?? "");
+  const canCreateSisLead = user?.canAccessSis || user?.roles?.some(r => ["admin", "ADMIN", "IT", "officer"].includes(r)) || ["admin", "ADMIN", "IT", "officer"].includes(user?.role ?? "");
 
   const [newRow, setNewRow] = useState({
     companyName: "",
     contactPerson: "",
+    position: "",
     email: "",
     phone: "",
     serviceInterest: "",
     notes: "",
     type: canCreateJmcsLead ? "JMCS" : "SIS",
+    status: "new",
   });
 
   const { data: leads, isLoading } = useQuery({
@@ -224,8 +279,18 @@ export default function Leads() {
     },
   });
 
+  const { data: analysis } = useQuery({
+    queryKey: ["leads-analysis"],
+    queryFn: async (): Promise<LeadSummary | null> => {
+      const res = await fetch("/api/leads/summary");
+      if (!res.ok) return null;
+      return res.json();
+    },
+  });
+
   const refetch = () => {
     queryClient.invalidateQueries({ queryKey: ["leads"] });
+    queryClient.invalidateQueries({ queryKey: ["leads-analysis"] });
   };
 
   const [selectedIds, setSelectedIds] = useState<Set<string | number>>(new Set());
@@ -280,7 +345,7 @@ export default function Leads() {
       const res = await fetch("/api/leads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...newRow, type: newRow.type }),
+        body: JSON.stringify({ ...newRow }),
       });
       if (!res.ok) throw new Error("Failed to create lead");
       return res.json();
@@ -288,7 +353,7 @@ export default function Leads() {
     onSuccess: () => {
       refetch();
       setShowAddRow(false);
-      setNewRow({ companyName: "", contactPerson: "", email: "", phone: "", serviceInterest: "", notes: "", type: canCreateJmcsLead ? "JMCS" : "SIS" });
+      setNewRow({ companyName: "", contactPerson: "", position: "", email: "", phone: "", serviceInterest: "", notes: "", type: canCreateJmcsLead ? "JMCS" : "SIS", status: "new" });
       toast({ title: "Lead created" });
     },
     onError: (e: Error) => {
@@ -298,49 +363,107 @@ export default function Leads() {
 
   const resetAddRow = () => {
     setShowAddRow(false);
-    setNewRow({ companyName: "", contactPerson: "", email: "", phone: "", serviceInterest: "", notes: "", type: canCreateJmcsLead ? "JMCS" : "SIS" });
+    setNewRow({ companyName: "", contactPerson: "", position: "", email: "", phone: "", serviceInterest: "", notes: "", type: canCreateJmcsLead ? "JMCS" : "SIS", status: "new" });
   };
+
+  const updateRemarks = useMutation({
+    mutationFn: async ({ id, notes }: { id: string; notes: string }) => {
+      const res = await fetch(`/api/leads/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notes }),
+      });
+      if (!res.ok) throw new Error("Failed to save remarks");
+      return res.json();
+    },
+    onSuccess: () => {
+      refetch();
+      toast({ title: "Remarks saved" });
+    },
+    onError: () => toast({ title: "Failed to save remarks", variant: "destructive" }),
+  });
 
   const handleCellChange = (field: string, value: string) => {
     setNewRow(prev => ({ ...prev, [field]: value }));
   };
 
+  const leadMonths = Array.from(new Set<string>(
+    (leads ?? []).map((l: any) => (l.createdAt || "").slice(0, 7)).filter(Boolean)
+  )).sort().reverse();
+
+  const weekStartMs = (() => {
+    const now = new Date();
+    const day = now.getDay();
+    const mon = new Date(now);
+    mon.setDate(now.getDate() + (day === 0 ? -6 : 1 - day));
+    mon.setHours(0, 0, 0, 0);
+    return mon.getTime();
+  })();
+
   const filteredLeads = leads?.filter((lead: any) => {
-    if (!searchTerm && !statusFilter && typeFilter === "ALL") return true;
     const q = searchTerm.toLowerCase();
     const matchesSearch = !searchTerm ||
       lead.companyName.toLowerCase().includes(q) ||
       lead.contactPerson.toLowerCase().includes(q) ||
+      (lead.position || "").toLowerCase().includes(q) ||
       (lead.email || "").toLowerCase().includes(q);
     const matchesStatus = !statusFilter || lead.status === statusFilter;
     const matchesType = typeFilter === "ALL" || lead.type === typeFilter;
-    return matchesSearch && matchesStatus && matchesType;
+    let matchesPeriod = true;
+    if (periodFilter === "week") {
+      matchesPeriod = !!lead.createdAt && new Date(lead.createdAt).getTime() >= weekStartMs;
+    } else if (periodFilter) {
+      matchesPeriod = (lead.createdAt || "").startsWith(periodFilter);
+    }
+    return matchesSearch && matchesStatus && matchesType && matchesPeriod;
   });
 
-  const isAdmin = user?.roles?.some(r => ["admin", "ADMIN", "IT", "manager"].includes(r)) || ["admin", "ADMIN", "IT", "manager"].includes(user?.role ?? "");
+  const isAdmin = user?.roles?.some(r => ["admin", "ADMIN", "IT", "officer"].includes(r)) || ["admin", "ADMIN", "IT", "officer"].includes(user?.role ?? "");
   const isAddValid = newRow.companyName.trim() && newRow.contactPerson.trim();
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-            <Icon name="target" className="text-rose-500" size={28} />
-            Leads
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            {isAdmin ? "Manage all sales leads." : "Track your sales leads."}
-            {!isAdmin && " Only you can see your own leads."}
-          </p>
+<div className="hidden print:block mb-4">
+          <div className="text-center">
+            <h1 className="text-xl font-bold uppercase tracking-wide">Leads Report</h1>
+            <p className="text-sm">{isAdmin ? "All Leads" : "Granted Services Leads"}</p>
+          </div>
+          <div className="flex justify-between text-xs mt-3">
+            <div className="space-y-0.5">
+              <p><span className="font-semibold">Date Generated:</span> {new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</p>
+              {periodFilter && (
+                <p><span className="font-semibold">Period:</span> {periodFilter === "week" ? "This Week" : format(new Date(`${periodFilter}-01`), "MMMM yyyy")}</p>
+              )}
+              {statusFilter && <p><span className="font-semibold">Status:</span> <span className="capitalize">{statusFilter}</span></p>}
+              {typeFilter !== "ALL" && <p><span className="font-semibold">Type:</span> {typeFilter}</p>}
+            </div>
+            <div className="text-right">
+              <p><span className="font-semibold">Prepared by:</span> {user?.fullName || user?.username || "—"}</p>
+              <p><span className="font-semibold">Total Leads:</span> {filteredLeads?.length ?? 0}</p>
+            </div>
+          </div>
         </div>
-        <Button onClick={() => setShowAddRow(true)} disabled={showAddRow}>
-          <Icon name="plus" className="mr-2" size={16} />
-          Add Lead
-        </Button>
-      </div>
+
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 no-print">
+          <div>
+            <p className="text-muted-foreground">
+              {isAdmin ? "Manage all sales leads." : "Manage sales leads for your granted services."}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => window.print()}>
+              <Icon name="printer" className="mr-2" size={16} />
+              Print Report
+            </Button>
+            <Button onClick={() => setShowAddRow(true)} disabled={showAddRow}>
+              <Icon name="plus" className="mr-2" size={16} />
+              Add Lead
+            </Button>
+          </div>
+        </div>
 
       {selectedIds.size > 0 && (
-        <div className="flex items-center justify-between rounded-lg border bg-muted/40 px-4 py-2">
+        <div className="flex items-center justify-between rounded-lg border bg-muted/40 px-4 py-2 no-print">
           <span className="text-sm font-medium">{selectedIds.size} selected</span>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>Clear selection</Button>
@@ -352,9 +475,84 @@ export default function Leads() {
         </div>
       )}
 
-      <Card className="neu rounded-2xl">
+      <Card className="neu rounded-lg print:shadow-none print:border print:border-gray-300 print:rounded-none print:mb-2">
+        <CardContent className="pt-5 pb-4 print:pt-2 print:pb-2">
+          <div className="flex items-center gap-2 mb-4 print:mb-1">
+            <Icon name="bar-chart-2" className="text-primary print:hidden" size={18} />
+            <h2 className="text-base font-semibold tracking-tight print:text-xs">Analysis on Leads</h2>
+            <Badge variant="outline" className="ml-1 font-mono text-[10px]">
+              {analysis?.thisMonth ?? "–"} new this month
+            </Badge>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 print:grid-cols-2 print:gap-1">
+            <div className="rounded-lg border p-4 space-y-3 print:p-1 print:space-y-1">
+              <div className="flex items-center justify-between print:mb-0">
+                <span className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground print:text-[9px]">
+                  <Icon name="target" className="print:hidden" size={16} /> Leads
+                </span>
+                <Badge variant="outline">{analysis?.total ?? "…"} total</Badge>
+              </div>
+              <div className="space-y-2 print:space-y-1">
+                {["JMCS", "SIS"].map((type) => (
+                  <div key={type} className="rounded-md bg-muted/30 p-3 space-y-2 print:p-1 print:space-y-0.5">
+                    <div className="flex items-center justify-between text-sm print:text-[9px]">
+                      <span className="font-medium flex items-center gap-2">
+                        <Icon name={type === "JMCS" ? "building-2" : "users"} size={14} className="text-muted-foreground print:hidden" />
+                        {type}
+                      </span>
+                      <span className="font-bold text-base print:text-[10px]">{analysis?.byType?.[type] ?? 0}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 text-xs print:gap-0.5 print:text-[8px]">
+                      {LEAD_STATUSES.map((s) => (
+                        <Badge key={s} variant="outline" className="capitalize">
+                          {s}: {analysis?.byTypeAndStatus?.[type]?.[s] ?? 0}
+                        </Badge>
+                      ))}
+                    </div>
+                    <div className="flex gap-4 text-xs text-muted-foreground print:gap-2 print:text-[8px]">
+                      <span className="flex items-center gap-1">
+                        <Icon name="phone" className="print:hidden" size={12} /> {analysis?.byTypeWithPhone?.[type] ?? 0} calls
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Icon name="mail" className="print:hidden" size={12} /> {analysis?.byTypeWithEmail?.[type] ?? 0} emails
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 no-print">
+        <h2 className="text-lg font-semibold tracking-tight flex items-center gap-2">
+          <Icon name="users" size={20} className="text-primary" />
+          Your Leads
+          {filteredLeads && (
+            <span className="text-sm font-normal text-muted-foreground">({filteredLeads.length})</span>
+          )}
+        </h2>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground font-medium">Period:</span>
+          <Select value={periodFilter} onValueChange={setPeriodFilter}>
+            <SelectTrigger className="w-[160px] bg-background">
+              <SelectValue placeholder="All Time" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All Time</SelectItem>
+              <SelectItem value="week">This Week</SelectItem>
+              {leadMonths.map((m) => (
+                <SelectItem key={m} value={m}>{format(new Date(`${m}-01`), "MMMM yyyy")}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <Card className="neu rounded-lg print:shadow-none print:border print:border-gray-300 print:rounded-none">
         <CardContent className="p-0">
-          <div className="p-4 border-b neu-inset rounded-xl space-y-3">
+          <div className="p-4 border-b neu-inset rounded-xl space-y-3 no-print">
             <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
               <div className="relative flex-1 w-full">
                 <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
@@ -393,35 +591,23 @@ export default function Leads() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/10 hover:bg-muted/10">
-                  <TableHead className="w-[40px]">
-                    <Checkbox
-                      checked={
-                        (filteredLeads?.length ?? 0) > 0 &&
-                        (filteredLeads?.every((l: any) => selectedIds.has(l.id)) ?? false)
-                          ? true
-                          : (filteredLeads?.some((l: any) => selectedIds.has(l.id)) ?? false)
-                            ? "indeterminate"
-                            : false
-                      }
-                      onCheckedChange={() => toggleAllVisible((filteredLeads ?? []).map((l: any) => l.id))}
-                      aria-label="Select all"
-                    />
-                  </TableHead>
+                  <TableHead className="w-[40px] no-print"></TableHead>
                   <TableHead className="min-w-[160px]">Company</TableHead>
                   <TableHead className="min-w-[150px]">Contact Person</TableHead>
                   <TableHead className="min-w-[140px]">Contact Info</TableHead>
                     <TableHead className="min-w-[160px]">Service Interest</TableHead>
                     <TableHead className="min-w-[80px]">Type</TableHead>
                     <TableHead className="min-w-[100px]">Status</TableHead>
-                    {isAdmin && <TableHead className="hidden sm:table-cell min-w-[100px]">Created By</TableHead>}
-                  <TableHead className="hidden sm:table-cell min-w-[100px]">Date</TableHead>
-                  <TableHead className="w-[70px]"></TableHead>
+                  <TableHead className="hidden sm:table-cell print:table-cell min-w-[130px]">Created By</TableHead>
+                  <TableHead className="min-w-[110px]">Date</TableHead>
+                  <TableHead className="min-w-[130px]">Remarks</TableHead>
+                  <TableHead className="w-[70px] no-print"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {showAddRow && (
-                  <TableRow className="bg-primary/5 border-b-2 border-primary/30">
-                    <TableCell>
+                  <TableRow className="bg-primary/5 border-b-2 border-primary/30 print:hidden">
+                    <TableCell className="no-print">
                       <Checkbox disabled aria-label="New row" />
                     </TableCell>
                     <TableCell>
@@ -433,12 +619,20 @@ export default function Leads() {
                       />
                     </TableCell>
                     <TableCell>
-                      <Input
-                        placeholder="Full name"
-                        className="h-8 text-xs"
-                        value={newRow.contactPerson}
-                        onChange={e => handleCellChange("contactPerson", e.target.value)}
-                      />
+                      <div className="flex flex-col gap-1">
+                        <Input
+                          placeholder="Full name"
+                          className="h-7 text-xs"
+                          value={newRow.contactPerson}
+                          onChange={e => handleCellChange("contactPerson", e.target.value)}
+                        />
+                        <Input
+                          placeholder="Position"
+                          className="h-7 text-xs"
+                          value={newRow.position}
+                          onChange={e => handleCellChange("position", e.target.value)}
+                        />
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col gap-1">
@@ -465,21 +659,42 @@ export default function Leads() {
                       />
                     </TableCell>
                     <TableCell>
-                      <span className="text-xs text-muted-foreground italic">New</span>
-                    </TableCell>
-                    <TableCell>
                       <Select value={newRow.type} onValueChange={v => setNewRow(prev => ({ ...prev, type: v }))}>
                         <SelectTrigger className="h-8 text-xs">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {canCreateJmcsLead && <SelectItem value="JMCS">JMCS</SelectItem>}
-                          {canCreateSisLead && <SelectItem value="SIS">SIS</SelectItem>}
+                          <SelectItem value="JMCS">JMCS</SelectItem>
+                          <SelectItem value="SIS">SIS</SelectItem>
                         </SelectContent>
                       </Select>
                     </TableCell>
-                    {isAdmin && <TableCell className="hidden sm:table-cell"></TableCell>}
+                    <TableCell>
+                      <Select value={newRow.status} onValueChange={v => setNewRow(prev => ({ ...prev, status: v }))}>
+                        <SelectTrigger className="h-8 text-xs capitalize">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {LEAD_STATUSES.map(s => (
+                            <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
                     <TableCell className="hidden sm:table-cell"></TableCell>
+                    <TableCell></TableCell>
+                    <TableCell>
+                      <Select value={newRow.notes} onValueChange={v => setNewRow(prev => ({ ...prev, notes: v }))}>
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Remark…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {QUICK_REMARKS.map(r => (
+                            <SelectItem key={r} value={r}>{r}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
                         <Button
@@ -511,13 +726,14 @@ export default function Leads() {
                     <TableCell><Skeleton className="h-4 w-28" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-16 rounded-full" /></TableCell>
-                    {isAdmin && <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-16" /></TableCell>}
-                    <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
+                    <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-16" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                     <TableCell><Skeleton className="h-8 w-8" /></TableCell>
                   </TableRow>
                 )) : filteredLeads?.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={isAdmin ? 9 : 8} className="h-48 text-center text-muted-foreground">
+                    <TableCell colSpan={10} className="h-48 text-center text-muted-foreground">
                       <div className="flex flex-col items-center justify-center">
                         <Icon name="target" className="opacity-20 mb-4" size={40} />
                         <p>No leads found.</p>
@@ -527,7 +743,7 @@ export default function Leads() {
                 ) : (
                   filteredLeads?.map((lead: any) => (
                     <TableRow key={lead.id} className="group">
-                      <TableCell>
+                      <TableCell className="no-print">
                         <Checkbox
                           checked={selectedIds.has(lead.id)}
                           onCheckedChange={() => toggleRow(lead.id)}
@@ -543,7 +759,10 @@ export default function Leads() {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Icon name="user" className="text-muted-foreground shrink-0" size={16} />
-                          {lead.contactPerson}
+                          <div className="min-w-0">
+                            <div className="truncate">{lead.contactPerson}</div>
+                            {lead.position && <div className="text-xs text-muted-foreground truncate">{lead.position}</div>}
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -574,15 +793,28 @@ export default function Leads() {
                           {lead.status}
                         </Badge>
                       </TableCell>
-                      {isAdmin && (
-                        <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
-                          #{lead.createdById}
-                        </TableCell>
-                      )}
-                      <TableCell className="hidden sm:table-cell text-xs text-muted-foreground">
+                      <TableCell className="hidden sm:table-cell print:table-cell text-sm text-muted-foreground">
+                        <div className="flex items-center gap-2">
+                          {lead.createdByName ? (
+                            <>
+                              <UserAvatar name={lead.createdByName} photoUrl={lead.createdByPhotoUrl} className="h-6 w-6" fallbackClassName="bg-primary/10 text-primary text-[9px] font-semibold" />
+                              <span className="truncate max-w-[120px]">{lead.createdByName}</span>
+                            </>
+                          ) : (
+                            <span className="text-xs text-muted-foreground italic">—</span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
                         {format(new Date(lead.createdAt), "MMM d, yyyy")}
                       </TableCell>
                       <TableCell>
+                        <div className="print:hidden">
+                          <RemarkInput lead={lead} onSave={(id, notes) => updateRemarks.mutate({ id, notes })} />
+                        </div>
+                        <span className="hidden print:inline text-sm">{lead.notes || "—"}</span>
+                      </TableCell>
+                      <TableCell className="no-print">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -643,6 +875,26 @@ export default function Leads() {
         onSuccess={refetch}
       />
       <SaveProgressIndicator saving={createMutation.isPending} label="Creating lead..." />
+
+      <style>{`
+        @media print {
+          html, body { background: white !important; height: auto !important; overflow: visible !important; }
+          .no-print { display: none !important; }
+          [data-sidebar] { display: none !important; }
+          header { display: none !important; }
+          nav, aside, footer { display: none !important; }
+          [role="dialog"] { display: none !important; }
+          [data-radix-popper-content-wrapper] { display: none !important; }
+          .fixed, .absolute { display: none !important; }
+          #root > div > main { padding: 0 !important; }
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          .border { border-color: #cbd5e1 !important; }
+          table { font-size: 8pt !important; width: 100% !important; border-collapse: collapse !important; }
+          table th, table td { border: 1px solid #cbd5e1 !important; padding: 4px 6px !important; }
+          table thead th { background: #f1f5f9 !important; font-weight: 600 !important; }
+          .overflow-x-auto { overflow: visible !important; }
+        }
+      `}</style>
     </div>
   );
 }

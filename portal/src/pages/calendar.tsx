@@ -53,9 +53,43 @@ function toLocalTimeStr(d: string) {
   return format(parseISO(d), "HH:mm");
 }
 
+const AUTO_KEYWORDS: { keys: string[]; type: CalendarEventEventType }[] = [
+  { keys: ["lead audit", "lead auditor"], type: "lead-audit" },
+  { keys: ["internal audit", "internal auditor"], type: "internal-audit" },
+  { keys: ["deadline"], type: "deadline" },
+  { keys: ["training", "seminar", "workshop"], type: "training" },
+  { keys: ["review"], type: "review" },
+  { keys: ["audit", "auditor"], type: "audit" },
+  { keys: ["meeting"], type: "meeting" },
+];
+
+function autoInferType(title?: string): CalendarEventEventType | null {
+  if (!title) return null;
+  const lower = title.toLowerCase();
+  for (const { keys, type } of AUTO_KEYWORDS) {
+    if (keys.some(k => lower.includes(k))) return type;
+  }
+  return null;
+}
+
+const TYPE_LABELS: Record<CalendarEventEventType, string> = {
+  meeting: "Meeting",
+  deadline: "Deadline",
+  training: "Training",
+  review: "Review",
+  audit: "Audit",
+  "lead-audit": "Lead Audit",
+  "internal-audit": "Internal Audit",
+  other: "Other",
+};
+
+function getTypeLabel(type: CalendarEventEventType) {
+  return TYPE_LABELS[type] ?? type;
+}
+
 const eventSchema = z.object({
   title: z.string().min(1, "Title is required"),
-  eventType: z.enum(["meeting", "deadline", "training", "review", "other"] as const),
+  eventType: z.enum(["meeting", "deadline", "training", "review", "audit", "internal-audit", "lead-audit", "other"] as const),
   status: z.enum(["confirmed", "tentative", "cancelled"] as const),
   date: z.string().min(1, "Date is required"),
   startTime: z.string().optional(),
@@ -119,7 +153,9 @@ function EventDialog({ open, onOpenChange, defaultDate, editingEvent, onSuccess,
     mutationFn: async (data: EventFormValues) => {
       const startDate = data.allDay ? data.date : `${data.date}T${data.startTime}:00`;
       const endDate = data.allDay ? data.date : `${data.date}T${data.endTime}:00`;
-      const body = { title: data.title, description: data.description, eventType: data.eventType, status: data.status, startDate, endDate, allDay: data.allDay, location: data.location };
+      const inferred = autoInferType(data.title);
+      const eventType = inferred && data.eventType === "meeting" ? inferred : data.eventType;
+      const body = { title: data.title, description: data.description, eventType, status: data.status, startDate, endDate, allDay: data.allDay, location: data.location };
       if (isEditing) {
         const res = await fetch(`/api/events/${editingEvent.id}`, {
           method: "PATCH",
@@ -201,6 +237,9 @@ function EventDialog({ open, onOpenChange, defaultDate, editingEvent, onSuccess,
                       <SelectItem value="deadline">Deadline</SelectItem>
                       <SelectItem value="training">Training</SelectItem>
                       <SelectItem value="review">Review</SelectItem>
+                      <SelectItem value="audit">Audit</SelectItem>
+                      <SelectItem value="internal-audit">Internal Audit</SelectItem>
+                      <SelectItem value="lead-audit">Lead Audit</SelectItem>
                       <SelectItem value="other">Other</SelectItem>
                     </SelectContent>
                    </Select>
@@ -308,7 +347,7 @@ function EventDialog({ open, onOpenChange, defaultDate, editingEvent, onSuccess,
                     </Button>
                     <div className="flex gap-2">
                       <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-                      <Button type="submit" disabled={saveMutation.isPending}>
+                      <Button type="submit" disabled={saveMutation.isPending} variant="success">
                         {saveMutation.isPending ? "Saving..." : "Save"}
                       </Button>
                     </div>
@@ -336,7 +375,7 @@ function EventDialog({ open, onOpenChange, defaultDate, editingEvent, onSuccess,
 
 export default function Calendar() {
   const { user } = useAuth();
-  const isAdmin = user?.roles?.some(r => ["admin", "ADMIN", "IT", "manager"].includes(r)) || ["admin", "ADMIN", "IT", "manager"].includes(user?.role ?? "");
+  const isAdmin = user?.roles?.some(r => ["admin", "ADMIN", "IT"].includes(r)) || ["admin", "ADMIN", "IT"].includes(user?.role ?? "");
   const canEdit = isAdmin || !!user?.canEditCalendar;
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<"grid" | "list">("grid");
@@ -382,9 +421,15 @@ export default function Calendar() {
       case "deadline": return "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800";
       case "training": return "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800";
       case "review": return "bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-800";
-      default: return "bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700";
+      case "audit": return "bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800";
+      case "lead-audit": return "bg-fuchsia-100 text-fuchsia-800 border-fuchsia-200 dark:bg-fuchsia-900/30 dark:text-fuchsia-300 dark:border-fuchsia-800";
+      case "internal-audit": return "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800";
+      default: return "bg-slate-100 text-slate-800 border-border dark:bg-slate-800 dark:text-muted-foreground/60 dark:border-slate-700";
     }
   };
+
+  const getEffectiveType = (event: { title?: string; eventType: CalendarEventEventType }): CalendarEventEventType =>
+    autoInferType(event.title) ?? event.eventType;
 
   const getStatusColor = (status?: string | null) => {
     switch (status) {
@@ -411,10 +456,10 @@ export default function Calendar() {
     const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
     return (
-      <div className="neu rounded-2xl overflow-hidden">
+      <div className="neu rounded-lg overflow-hidden">
         <div className="grid grid-cols-7 border-b neu-inset rounded-xl">
           {weekDays.map(day => (
-            <div key={day} className="py-2 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            <div key={day} className="py-2 text-center text-xs font-semibold text-muted-foreground capitalize tracking-wider">
               {day}
             </div>
           ))}
@@ -450,7 +495,7 @@ export default function Calendar() {
                              <div 
                                key={event.id} 
                                 onClick={e => { e.stopPropagation(); if (canEdit) openEditEvent(event); }}
-                               className={`text-[10px] px-1.5 py-1 rounded border font-medium break-words whitespace-normal leading-tight ${canEdit ? 'cursor-pointer hover:opacity-80' : ''} ${getStatusColor(event.status)}`}
+                               className={`text-[10px] px-1.5 py-1 rounded border font-medium break-words whitespace-normal leading-tight ${canEdit ? 'cursor-pointer hover:opacity-80' : ''} ${getEventTypeColor(getEffectiveType(event))}`}
                                title={`${event.title} — ${getStatusLabel(event.status)}`}
                              >
                               {!event.allDay && <span className="mr-1 opacity-70">{format(parseISO(event.startDate), 'HH:mm')}</span>}
@@ -482,7 +527,7 @@ export default function Calendar() {
       return (
         <div className="space-y-4">
           {Array(4).fill(0).map((_, i) => (
-            <Card key={i} className="neu rounded-2xl">
+            <Card key={i} className="neu rounded-lg">
               <CardContent className="p-4 flex gap-4">
                 <Skeleton className="h-16 w-16 rounded" />
                 <div className="space-y-2 flex-1">
@@ -501,7 +546,7 @@ export default function Calendar() {
 
     if (currentMonthEvents.length === 0) {
       return (
-        <Card className="neu rounded-2xl">
+        <Card className="neu rounded-lg">
           <CardContent className="h-64 flex flex-col items-center justify-center text-center">
             <Icon name="calendar" className="text-muted-foreground/30 mb-4" size={48} />
             <p className="text-lg font-medium">No events this month</p>
@@ -516,10 +561,10 @@ export default function Calendar() {
         {currentMonthEvents.map(event => {
           const startDate = parseISO(event.startDate);
            return (
-              <Card key={event.id} className={`neu rounded-2xl overflow-hidden ${canEdit ? 'cursor-pointer hover:bg-muted/10 transition-colors' : ''}`} onClick={() => { if (canEdit) openEditEvent(event); }}>
+              <Card key={event.id} className={`neu rounded-lg overflow-hidden ${canEdit ? 'cursor-pointer hover:bg-muted/10 transition-colors' : ''}`} onClick={() => { if (canEdit) openEditEvent(event); }}>
               <div className="flex flex-col sm:flex-row">
                 <div className="w-full sm:w-32 bg-muted/30 p-4 flex sm:flex-col items-center justify-center border-b sm:border-b-0 sm:border-r gap-2 sm:gap-0">
-                  <span className="text-sm font-bold text-muted-foreground uppercase">{format(startDate, 'MMM')}</span>
+                  <span className="text-sm font-bold text-muted-foreground capitalize">{format(startDate, 'MMM')}</span>
                   <span className="text-3xl font-bold">{format(startDate, 'dd')}</span>
                   <span className="text-xs font-medium text-muted-foreground">{format(startDate, 'EEEE')}</span>
                 </div>
@@ -530,8 +575,8 @@ export default function Calendar() {
                       <Badge variant="outline" className={`capitalize ${getStatusColor(event.status)}`}>
                         {getStatusLabel(event.status)}
                       </Badge>
-                      <Badge variant="outline" className={`capitalize ${getEventTypeColor(event.eventType)}`}>
-                        {event.eventType}
+                      <Badge variant="outline" className={`capitalize ${getEventTypeColor(getEffectiveType(event))}`}>
+                        {getTypeLabel(getEffectiveType(event))}
                       </Badge>
                     </div>
                   </div>
@@ -566,21 +611,22 @@ export default function Calendar() {
     );
   };
 
-  const statusLegend = [
-    { key: "confirmed", label: "Confirmed", cls: getStatusColor("confirmed") },
-    { key: "tentative", label: "Tentative", cls: getStatusColor("tentative") },
-    { key: "cancelled", label: "Cancelled", cls: getStatusColor("cancelled") },
+  const typeLegend = [
+    { key: "meeting", label: "Meeting", cls: getEventTypeColor("meeting") },
+    { key: "deadline", label: "Deadline", cls: getEventTypeColor("deadline") },
+    { key: "training", label: "Training", cls: getEventTypeColor("training") },
+    { key: "review", label: "Review", cls: getEventTypeColor("review") },
+    { key: "audit", label: "Audit", cls: getEventTypeColor("audit") },
+    { key: "internal-audit", label: "Internal Audit", cls: getEventTypeColor("internal-audit") },
+    { key: "lead-audit", label: "Lead Audit", cls: getEventTypeColor("lead-audit") },
+    { key: "other", label: "Other", cls: getEventTypeColor("other") },
   ] as const;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 max-w-6xl mx-auto" id="calendar-page">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-            <Icon name="calendar" className="text-emerald-500" size={28} />
-            Calendar
-          </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-muted-foreground">
             Schedule and track organizational events and deadlines.
           </p>
         </div>
@@ -599,8 +645,8 @@ export default function Calendar() {
       </div>
 
       <div className="flex flex-wrap items-center gap-2 no-print">
-        {statusLegend.map(s => (
-          <span key={s.key} className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-md border ${s.cls}`}>
+        {typeLegend.map(s => (
+          <span key={s.key} className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-md border capitalize ${s.cls}`}>
             <span className="h-2 w-2 rounded-full bg-white opacity-80" />
             {s.label}
           </span>

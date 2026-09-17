@@ -9,7 +9,15 @@ import { auth, signInWithEmailAndPassword, setPersistence, sendPasswordResetEmai
 import { useToast } from "@/hooks/use-toast";
 import { useAppUpdate } from "@/hooks/use-app-update";
 import { ToastAction } from "@/components/ui/toast";
-import { Icon } from "@/components/ui/icon"
+import { Icon } from "@/components/ui/icon";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const loginSchema = z.object({
   email: z.string().min(1, "Email is required").email("Invalid email address"),
@@ -20,6 +28,16 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 const PANEL_IMAGE_SRC = "/hi proffesional.png";
 
+const REMEMBER_KEY = "jmcs_remember_me";
+
+function loadRememberPref(): boolean {
+  try {
+    return localStorage.getItem(REMEMBER_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
 export default function Login() {
   const [, setLocation] = useLocation();
   const { setUser } = useAuth();
@@ -27,7 +45,7 @@ export default function Login() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [showPass, setShowPass] = useState(false);
-  const [remember, setRemember] = useState(false);
+  const [remember, setRemember] = useState(loadRememberPref);
   const [showSignUpWarning, setShowSignUpWarning] = useState(false);
 
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -36,15 +54,32 @@ export default function Login() {
   const update = useAppUpdate();
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [resettingPassword, setResettingPassword] = useState(false);
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+
+  const handleToggleRemember = () => {
+    setRemember((prev) => {
+      const next = !prev;
+      try {
+        if (next) localStorage.setItem(REMEMBER_KEY, "1");
+        else localStorage.removeItem(REMEMBER_KEY);
+      } catch {
+        /* noop */
+      }
+      return next;
+    });
+  };
 
   const handleForgotPassword = async () => {
-    const email = prompt("Enter your email address to reset your password");
+    const email = resetEmail.trim();
     if (!email) return;
     setResettingPassword(true);
     try {
       if (!auth) throw new Error("Firebase Auth not initialized");
       await sendPasswordResetEmail(auth, email);
       toast({ title: "Password reset email sent", description: `Check your inbox at ${email} for further instructions.` });
+      setForgotOpen(false);
+      setResetEmail("");
     } catch (err: any) {
       toast({ title: "Failed to send reset email", description: err?.message || "An error occurred", variant: "destructive" });
     } finally {
@@ -207,7 +242,7 @@ export default function Login() {
         .neo-fade { animation: fade-in-up 0.6s ease both; }
       `}</style>
 
-      <div className="min-h-screen w-full flex items-center justify-center p-4 sm:p-6" style={{ backgroundColor: "#e0e5ec" }}>
+      <div className="min-h-screen w-full flex items-center justify-center p-4 sm:p-6 bg-background">
         <div className="w-full max-w-md">
 
           {/* Right: Form */}
@@ -215,14 +250,14 @@ export default function Login() {
 
           {/* Heading */}
           <div className="text-center lg:text-left mb-8 neo-fade">
-            <h1 className="text-2xl sm:text-3xl font-bold text-slate-700 tracking-tight" style={{ letterSpacing: "-0.02em" }}>
+            <h1 className="font-serif text-3xl sm:text-4xl font-semibold text-foreground tracking-tight" style={{ letterSpacing: "-0.01em" }}>
               Welcome back
             </h1>
-            <p className="text-sm text-slate-500 mt-2">
+            <p className="text-sm text-muted-foreground mt-2">
               Don't have an account?{" "}
               <button
                 type="button"
-                className="font-semibold text-[#c0152b] underline underline-offset-2 hover:text-[#a01025] transition-colors"
+                className="font-semibold text-primary underline underline-offset-2 hover:text-primary/80 transition-colors"
                 onClick={() => setShowSignUpWarning(true)}
               >
                 Sign Up
@@ -232,19 +267,19 @@ export default function Login() {
 
           {/* Sign-up restricted warning */}
           {showSignUpWarning && (
-            <div className="neo-fade neu-inset flex items-start gap-3 rounded-2xl px-5 py-4 mb-6 text-sm"
+            <div className="neo-fade bg-amber-50 border border-amber-200 flex items-start gap-3 rounded-2xl px-5 py-4 mb-6 text-sm"
             >
               <Icon name="shield-alert" className="text-amber-500 flex-shrink-0 mt-0.5" size={18} />
               <div className="flex-1">
                 <p className="font-semibold text-amber-700">Sign-up Restricted</p>
-                <p className="mt-0.5 text-xs text-slate-500 leading-relaxed">
+                <p className="mt-0.5 text-xs text-muted-foreground leading-relaxed">
                   Account registration is temporarily disabled. All accounts are managed by your system administrator.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setShowSignUpWarning(false)}
-                className="flex-shrink-0 text-slate-400 hover:text-slate-600 transition-colors mt-0.5"
+                className="flex-shrink-0 text-muted-foreground/80 hover:text-foreground/80 transition-colors mt-0.5"
               >
                 <Icon name="x" size={16} />
               </button>
@@ -253,16 +288,16 @@ export default function Login() {
 
           {/* Desktop update banner */}
           {update.isDesktop && (
-            <div className="neo-fade neu-inset flex items-center justify-between gap-3 rounded-2xl px-5 py-3 mb-6 text-sm"
+            <div className="neo-fade bg-white border border-border flex items-center justify-between gap-3 rounded-2xl px-5 py-3 mb-6 text-sm"
             >
               <div className="flex items-center gap-2">
-                <Icon name="refresh-cw" className={`text-slate-500 ${checkingUpdate ? "animate-spin" : ""}`} size={16} />
-                <span className="font-medium text-slate-600">Internal Portal</span>
+                <Icon name="refresh-cw" className={`text-muted-foreground ${checkingUpdate ? "animate-spin" : ""}`} size={16} />
+                <span className="font-medium text-foreground/80">Internal Portal</span>
               </div>
               <button
                 type="button"
                 onClick={handleCheckUpdate}
-                className="font-semibold text-slate-500 hover:text-slate-700 underline underline-offset-2 transition-colors"
+                className="font-semibold text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
               >
                 Check for updates
               </button>
@@ -270,23 +305,23 @@ export default function Login() {
           )}
 
           {/* Neomorphism card */}
-          <div className="neo-fade neu rounded-3xl p-8 sm:p-10"
+          <div className="neo-fade neu rounded-xl p-8 sm:p-10"
           >
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
               {/* Email */}
               <div>
-                <label className="block text-sm font-medium text-slate-600 mb-2">
+                <label className="block text-sm font-medium text-foreground/80 mb-2">
                   Email
                 </label>
                 <div className="relative">
-                  <Icon name="mail" className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                  <Icon name="mail" className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/80" size={16} />
                   <input
                     type="email"
                     {...register("email")}
                     data-testid="input-email"
                     autoComplete="email"
                     placeholder="you@company.com"
-                    className="neu-inset w-full rounded-xl pl-11 pr-4 py-3.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none transition-all"
+                    className="w-full rounded-lg border border-input bg-white pl-11 pr-4 py-3.5 text-sm text-foreground placeholder:text-muted-foreground/80 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
                   />
                 </div>
                 {errors.email && (
@@ -298,23 +333,23 @@ export default function Login() {
 
               {/* Password */}
               <div>
-                <label className="block text-sm font-medium text-slate-600 mb-2">
+                <label className="block text-sm font-medium text-foreground/80 mb-2">
                   Password
                 </label>
                 <div className="relative">
-                  <Icon name="lock" className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                  <Icon name="lock" className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/80" size={16} />
                   <input
                     type={showPass ? "text" : "password"}
                     {...register("password")}
                     data-testid="input-password"
                     autoComplete="current-password"
                     placeholder="Enter your password"
-                    className="neu-inset w-full rounded-xl pl-11 pr-12 py-3.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none transition-all"
+                    className="w-full rounded-lg border border-input bg-white pl-11 pr-12 py-3.5 text-sm text-foreground placeholder:text-muted-foreground/80 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPass(!showPass)}
-                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-muted-foreground/80 hover:text-foreground/80 transition-colors"
                   >
                     <Icon name={showPass ? "eye-off" : "eye"} size={18} />
                   </button>
@@ -328,24 +363,23 @@ export default function Login() {
 
               {/* Remember + Forgot */}
               <div className="flex items-center justify-between pt-1">
-                <label className="flex items-center gap-3 cursor-pointer select-none group">
+                <label className="flex items-center gap-3 cursor-pointer select-none group" onClick={handleToggleRemember}>
                   <div
-                    onClick={() => setRemember(!remember)}
-                    className={`w-5 h-5 rounded-md flex items-center justify-center transition-all cursor-pointer flex-shrink-0 ${remember ? "neu-inset" : "neu-sm"}`}
+                    className={`w-5 h-5 rounded-md flex items-center justify-center transition-all cursor-pointer flex-shrink-0 border ${remember ? "border-primary bg-primary/10" : "border-input bg-white"}`}
                   >
                     {remember && (
-                      <Icon name="check" size={14} className="text-[#c0152b]" />
+                      <Icon name="check" size={14} className="text-primary" />
                     )}
                   </div>
-                  <span className="text-sm text-slate-500 group-hover:text-slate-700 transition-colors">Keep me logged in</span>
+                  <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">Keep me logged in</span>
                 </label>
                 <button
                   type="button"
-                  onClick={handleForgotPassword}
+                  onClick={() => setForgotOpen(true)}
                   disabled={resettingPassword}
-                  className="text-sm font-medium text-slate-400 hover:text-slate-600 transition-colors"
+                  className="text-sm font-medium text-muted-foreground/80 hover:text-foreground/80 transition-colors"
                 >
-                  {resettingPassword ? "Sending..." : "Forgot Password?"}
+                  Forgot Password?
                 </button>
               </div>
 
@@ -354,10 +388,7 @@ export default function Login() {
                 type="submit"
                 disabled={isLoading}
                 data-testid="button-login"
-                className="btn-shine neu-sm w-full py-4 rounded-xl text-sm font-bold text-white transition-all duration-200 disabled:opacity-60 mt-2"
-                style={{
-                  backgroundColor: "#c0152b",
-                }}
+                className="btn-shine bg-primary hover:bg-primary/90 w-full py-4 rounded-lg text-sm font-bold text-white transition-all duration-200 disabled:opacity-60 mt-2"
               >
                 <span className="shine-layer" />
                 {isLoading ? (
@@ -372,7 +403,7 @@ export default function Login() {
               </button>
               {isLoading && (
                 <div className="mt-3">
-                  <div className="neu-inset rounded-full h-1.5 overflow-hidden">
+                  <div className="bg-gray-200 rounded-full h-1.5 overflow-hidden">
                     <div className="h-full rounded-full bg-white/60 animate-[progress-indeterminate_1.5s_ease-in-out_infinite]" style={{ width: "40%" }} />
                   </div>
                 </div>
@@ -380,6 +411,53 @@ export default function Login() {
             </form>
           </div>
           </div>
+
+          {/* Forgot password dialog */}
+          <Dialog open={forgotOpen} onOpenChange={setForgotOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Reset your password</DialogTitle>
+                <DialogDescription>
+                  Enter the email address associated with your account and we'll send you a link to reset your password.
+                </DialogDescription>
+              </DialogHeader>
+              <div>
+                <label className="block text-sm font-medium text-foreground/80 mb-2">
+                  Email
+                </label>
+                <div className="relative">
+                  <Icon name="mail" className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/80" size={16} />
+                  <input
+                    type="email"
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter" && resetEmail.trim() && !resettingPassword) handleForgotPassword(); }}
+                    autoFocus
+                    autoComplete="email"
+                    placeholder="you@company.com"
+                    className="w-full rounded-lg border border-input bg-white pl-11 pr-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/80 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <button
+                  type="button"
+                  onClick={() => setForgotOpen(false)}
+                  className="rounded-lg border border-input px-4 py-2 text-sm font-medium hover:bg-muted transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleForgotPassword}
+                  disabled={resettingPassword || !resetEmail.trim()}
+                  className="rounded-lg bg-primary hover:bg-primary/90 px-4 py-2 text-sm font-bold text-white transition-colors disabled:opacity-60"
+                >
+                  {resettingPassword ? "Sending..." : "Send Reset Link"}
+                </button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
         </div>
       </div>

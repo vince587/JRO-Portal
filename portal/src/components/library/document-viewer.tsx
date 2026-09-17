@@ -191,13 +191,13 @@ export function DocumentViewer({
 
       if (isLocal) {
         return (
-          <div className="flex min-h-[50vh] flex-col items-center justify-center p-8 text-center bg-slate-50 dark:bg-slate-950 rounded-xl">
+          <div className="flex min-h-[50vh] flex-col items-center justify-center p-8 text-center bg-muted/60 dark:bg-slate-950 rounded-xl">
             <div className="mb-6">
               <div className="w-16 h-16 flex items-center justify-center rounded-xl bg-amber-50 dark:bg-amber-950/30 mx-auto mb-4 border border-amber-200 dark:border-amber-900/30">
                 <Icon name="alert-triangle" size={28} className="text-amber-500" />
               </div>
-              <p className="text-lg font-medium text-slate-700 dark:text-slate-200">Local Preview Restricted</p>
-              <p className="text-sm text-slate-400 mt-2 max-w-sm mx-auto">
+              <p className="text-lg font-medium text-foreground dark:text-slate-200">Local Preview Restricted</p>
+              <p className="text-sm text-muted-foreground/80 mt-2 max-w-sm mx-auto">
                 Microsoft Office documents can only be previewed when hosted on a publicly reachable live server. Please download the file to view its contents locally.
               </p>
             </div>
@@ -226,7 +226,7 @@ export function DocumentViewer({
 
     if (kind === "image") {
       return (
-        <div className="flex min-h-[40vh] items-center justify-center p-4 bg-slate-50 dark:bg-slate-950 rounded-xl overflow-hidden">
+        <div className="flex min-h-[40vh] items-center justify-center p-4 bg-muted/60 dark:bg-slate-950 rounded-xl overflow-hidden">
           <img
             src={src}
             alt={attachment.filename}
@@ -242,10 +242,10 @@ export function DocumentViewer({
       <div className="flex min-h-[50vh] flex-col items-center justify-center p-8 text-center">
         <div className="mb-6">
           <div className="w-16 h-16 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 mx-auto mb-4">
-            <Icon name="file-text" size={28} className="text-slate-400" />
+            <Icon name="file-text" size={28} className="text-muted-foreground/80" />
           </div>
-          <p className="text-lg font-medium text-slate-700 dark:text-slate-200">Preview not available</p>
-          <p className="text-sm text-slate-400 mt-2 max-w-sm mx-auto">
+          <p className="text-lg font-medium text-foreground dark:text-slate-200">Preview not available</p>
+          <p className="text-sm text-muted-foreground/80 mt-2 max-w-sm mx-auto">
             Previewing is not supported for {attachment.filename.split('.').pop()?.toUpperCase()} files. Please download the file to view its contents.
           </p>
         </div>
@@ -303,7 +303,7 @@ export function DocumentViewer({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="p-0 w-full h-full max-w-[90vw] max-h-[90vh] [&>button]:hidden">
-        <DialogHeader className="px-5 py-3 border-b border-gray-200/60 shrink-0">
+        <DialogHeader className="px-5 py-3 border-b border-border shrink-0">
           <div className="flex items-center justify-between">
             <DialogTitle className="flex items-center gap-2 text-base min-w-0">
               <Icon name="eye" size={16} className="text-emerald-500 shrink-0" />
@@ -312,13 +312,13 @@ export function DocumentViewer({
             <div className="flex items-center gap-1.5 shrink-0">
               <button
                 onClick={() => setFullScreen(true)}
-                className="neu-sm rounded-lg px-3 py-1.5 text-xs font-medium text-slate-600 hover:shadow-md transition-all inline-flex items-center gap-1.5"
+                className="neu-sm rounded-lg px-3 py-1.5 text-xs font-medium text-foreground/80 hover:shadow-md transition-all inline-flex items-center gap-1.5"
               >
                 <Icon name="maximize-2" size={14} /> Full view
               </button>
               <button
                 onClick={() => onOpenChange(false)}
-                className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all"
+                className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground/80 hover:text-red-500 hover:bg-red-50 transition-all"
               >
                 <Icon name="x" size={18} />
               </button>
@@ -331,8 +331,8 @@ export function DocumentViewer({
           {renderContent()}
         </div>
 
-        <div className="px-5 py-3 border-t border-gray-200/60 flex items-center justify-between shrink-0">
-          <span className="text-xs text-slate-400">{(attachment.size / 1024).toFixed(0)} KB</span>
+        <div className="px-5 py-3 border-t border-border flex items-center justify-between shrink-0">
+          <span className="text-xs text-muted-foreground/80">{(attachment.size / 1024).toFixed(0)} KB</span>
           <div className="flex gap-2">
             <Button variant="ghost" onClick={() => onOpenChange(false)}>Close</Button>
             {allowDownload && (

@@ -3,7 +3,7 @@ import {
   getAll, getDoc, createDoc, updateDoc, deleteDoc,
   type EventDoc,
 } from "../lib/firebase-db";
-import { requirePermission, requireAnyPermission } from "../middlewares/auth";
+import { requireAuth, requirePermission } from "../middlewares/auth";
 import {
   ListEventsQueryParams,
   CreateEventBody,
@@ -28,7 +28,7 @@ function mapEvent(e: EventDoc) {
   };
 }
 
-router.get("/events", requireAnyPermission("canAccessJmcs", "canEditCalendar"), async (req, res): Promise<void> => {
+router.get("/events", requireAuth, async (req, res): Promise<void> => {
   const params = ListEventsQueryParams.safeParse(req.query);
   let rows = await getAll<EventDoc>("events", "startDate", "asc");
   if (params.success) {
@@ -69,7 +69,7 @@ router.post("/events", requirePermission("canEditCalendar"), async (req, res): P
   res.status(201).json(mapEvent(event));
 });
 
-router.get("/events/:id", requireAnyPermission("canAccessJmcs", "canEditCalendar"), async (req, res): Promise<void> => {
+router.get("/events/:id", requireAuth, async (req, res): Promise<void> => {
   const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const event = await getDoc<EventDoc>("events", id);
   if (!event) {

@@ -29,6 +29,7 @@ function mapCert(c: CertificateDoc) {
   return {
     id: c.id,
     title: c.title,
+    company: c.company ?? null,
     recipientName: c.recipientName,
     recipientEmail: c.recipientEmail,
     issuedBy: c.issuedBy,
@@ -71,6 +72,10 @@ router.get("/certificates", async (req, res): Promise<void> => {
 });
 
 router.post("/certificates", async (req, res): Promise<void> => {
+  if (!req.currentUser!.canManageCertificates) {
+    res.status(403).json({ error: "sorry you dont have permission to add certificates" });
+    return;
+  }
   const parsed = CreateCertificateBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -118,7 +123,7 @@ router.patch("/certificates/:id", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Certificate not found" });
     return;
   }
-  const isPrivileged = hasRole(req.currentUser!, "admin", "ADMIN", "IT", "manager");
+  const isPrivileged = hasRole(req.currentUser!, "admin", "ADMIN", "IT", "officer");
   if (!isPrivileged && !req.currentUser!.canManageCertificates) {
     res.status(403).json({ error: "sorry you dont have permission to manage certificates" });
     return;
@@ -133,7 +138,7 @@ router.patch("/certificates/:id", async (req, res): Promise<void> => {
 });
 
 router.delete("/certificates/:id", async (req, res): Promise<void> => {
-  const isPrivileged = hasRole(req.currentUser!, "admin", "ADMIN", "IT", "manager");
+  const isPrivileged = hasRole(req.currentUser!, "admin", "ADMIN", "IT", "officer");
   if (!isPrivileged && !req.currentUser!.canManageCertificates) {
     res.status(403).json({ error: "sorry you dont have permission to manage certificates" });
     return;
@@ -154,7 +159,7 @@ const BulkDeleteCertificatesBody = z.object({
 });
 
 router.post("/certificates/bulk-delete", async (req, res): Promise<void> => {
-  const isPrivileged = hasRole(req.currentUser!, "admin", "ADMIN", "IT", "manager");
+  const isPrivileged = hasRole(req.currentUser!, "admin", "ADMIN", "IT", "officer");
   if (!isPrivileged && !req.currentUser!.canManageCertificates) {
     res.status(403).json({ error: "sorry you dont have permission to manage certificates" });
     return;

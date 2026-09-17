@@ -55,6 +55,45 @@ function getEntityUrl(type: string, id?: number | null) {
   }
 }
 
+function exportToCSV(items: ActivityItem[], filename: string) {
+  const headers = ["ID", "Type", "Description", "Timestamp", "Entity ID"];
+  const rows = items.map((item) => [
+    String(item.id),
+    item.type,
+    `"${item.description.replace(/"/g, '""')}"`,
+    item.timestamp,
+    String(item.entityId ?? ""),
+  ]);
+  const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${filename}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+async function exportToExcel(items: ActivityItem[], filename: string) {
+  try {
+    const xlsx = await import("xlsx");
+    const ws = xlsx.utils.json_to_sheet(
+      items.map((item) => ({
+        ID: item.id,
+        Type: item.type,
+        Description: item.description,
+        Timestamp: item.timestamp,
+        "Entity ID": item.entityId ?? "",
+      }))
+    );
+    const wb = xlsx.utils.book_new();
+    xlsx.utils.book_append_sheet(wb, ws, "Activity");
+    xlsx.writeFile(wb, `${filename}.xlsx`);
+  } catch {
+    exportToCSV(items, filename);
+  }
+}
+
 export default function ActivityAudit() {
   const [page, setPage] = useState(1);
   const [typeFilter, setTypeFilter] = useState("");
@@ -72,14 +111,24 @@ export default function ActivityAudit() {
     },
   });
 
+  const handleExport = async (exportFormat: "csv" | "excel") => {
+    if (!data) return;
+    const allItems = data.items;
+    const timestamp = format(new Date(), "yyyy-MM-dd_HHmmss");
+    if (exportFormat === "csv") {
+      exportToCSV(allItems, `activity-log-${timestamp}`);
+    } else {
+      await exportToExcel(allItems, `activity-log-${timestamp}`);
+    }
+  };
+
   return (
     <div className="space-y-6 pb-8 animate-in fade-in duration-500">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Activity Audit Log</h1>
-        <p className="text-muted-foreground mt-1">Full searchable history of all system actions.</p>
+        <p className="text-muted-foreground">Full searchable history of all system actions.</p>
       </div>
 
-      <Card className="neu rounded-2xl">
+      <Card className="neu rounded-lg">
         <CardHeader className="pb-3 border-b">
           <div className="flex flex-col md:flex-row gap-3 items-start md:items-center justify-between">
             <CardTitle className="text-lg font-semibold flex items-center gap-2">
@@ -110,6 +159,16 @@ export default function ActivityAudit() {
                   <SelectItem value="user">User</SelectItem>
                 </SelectContent>
               </Select>
+              {data && data.items.length > 0 && (
+                <>
+                  <Button variant="outline" size="sm" onClick={() => handleExport("csv")} title="Export as CSV">
+                    <Icon name="file-text" className="mr-1" size={14} /> CSV
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => handleExport("excel")} title="Export as Excel">
+                    <Icon name="file-spreadsheet" className="mr-1" size={14} /> Excel
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </CardHeader>

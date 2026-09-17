@@ -23,19 +23,19 @@ export function UploadProgressOverlay({ uploading, progress, fileName, fileSize,
 
   return (
     <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-4 fade-in duration-300">
-      <div className="neu rounded-2xl p-4 w-72 shadow-lg">
+      <div className="neu rounded-lg p-4 w-72 shadow-lg">
         <div className="flex items-center gap-3 mb-3">
           <div className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 ${isComplete ? "bg-emerald-500/15 text-emerald-600" : "neu-inset text-primary"}`}>
             <Icon name={isComplete ? "check-circle" : "upload-cloud"} size={18} />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-800 truncate">{fileName || "Uploading..."}</p>
-            <p className="text-xs text-gray-500">
+            <p className="text-sm font-medium text-foreground truncate">{fileName || "Uploading..."}</p>
+            <p className="text-xs text-muted-foreground">
               {isComplete ? "Upload complete" : `${formatBytes(fileSize)} • ${progress}%`}
             </p>
           </div>
           {!isComplete && onCancel && (
-            <button onClick={onCancel} className="text-gray-400 hover:text-red-500 transition-colors">
+            <button onClick={onCancel} className="text-muted-foreground hover:text-red-500 transition-colors">
               <Icon name="x" size={16} />
             </button>
           )}
@@ -61,12 +61,12 @@ export function SaveProgressIndicator({ saving, label = "Saving..." }: SaveProgr
 
   return (
     <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-4 fade-in duration-300">
-      <div className="neu rounded-2xl px-4 py-3 flex items-center gap-3 shadow-lg">
+      <div className="neu rounded-lg px-4 py-3 flex items-center gap-3 shadow-lg">
         <div className="relative h-5 w-5">
           <div className="absolute inset-0 rounded-full border-2 border-primary/20" />
           <div className="absolute inset-0 rounded-full border-2 border-primary border-t-transparent animate-spin" />
         </div>
-        <span className="text-sm font-medium text-gray-700">{label}</span>
+        <span className="text-sm font-medium text-foreground/80">{label}</span>
       </div>
     </div>
   );

@@ -31,7 +31,7 @@ export default function AdminDashboard() {
 
       <div className="grid gap-8 md:grid-cols-2 max-w-3xl mx-auto mt-8">
         <Link href="/hris" className="block">
-          <Card className="neu rounded-2xl hover:border-primary/50 hover:shadow-lg transition-all cursor-pointer group border-2">
+          <Card className="neu rounded-lg hover:border-primary/50 hover:shadow-lg transition-all cursor-pointer group border-2">
             <CardContent className="flex flex-col items-center justify-center py-16 gap-6">
               <div className="h-20 w-20 rounded-2xl bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
                 <Icon name="users" className="text-primary" size={40} />
@@ -46,7 +46,7 @@ export default function AdminDashboard() {
         </Link>
 
         <Link href="/admin/portal" className="block">
-          <Card className="neu rounded-2xl hover:border-primary/50 hover:shadow-lg transition-all cursor-pointer group border-2">
+          <Card className="neu rounded-lg hover:border-primary/50 hover:shadow-lg transition-all cursor-pointer group border-2">
             <CardContent className="flex flex-col items-center justify-center py-16 gap-6">
               <div className="h-20 w-20 rounded-2xl bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
                 <Icon name="layout-dashboard" className="text-primary" size={40} />

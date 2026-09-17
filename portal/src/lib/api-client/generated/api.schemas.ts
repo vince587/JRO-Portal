@@ -22,6 +22,7 @@ export type UserRole = typeof UserRole[keyof typeof UserRole];
 export const UserRole = {
   admin: 'admin',
   manager: 'manager',
+  officer: 'officer',
   staff: 'staff',
   ADMIN: 'ADMIN',
   IT: 'IT',
@@ -46,6 +47,7 @@ export interface User {
   canManageCertificates?: boolean;
   canAccessProjects?: boolean;
   canAccessAdmin?: boolean;
+  canAccessDevelopers?: boolean;
   /** @nullable */
   photoUrl?: string | null;
   mustChangePassword?: boolean;
@@ -233,6 +235,8 @@ export const CertificateStatus = {
 export interface Certificate {
   id: number;
   title: string;
+  /** @nullable */
+  company?: string | null;
   recipientName: string;
   /** @nullable */
   recipientEmail?: string | null;
@@ -266,6 +270,7 @@ export interface Certificate {
 export interface CertificateInput {
   /** @minLength 1 */
   title: string;
+  company?: string;
   recipientName: string;
   recipientEmail?: string;
   issuedBy: string;
@@ -285,6 +290,7 @@ export interface CertificateInput {
 
 export interface CertificateUpdate {
   title?: string;
+  company?: string;
   recipientName?: string;
   recipientEmail?: string;
   issuedBy?: string;
@@ -433,6 +439,9 @@ export const CalendarEventEventType = {
   deadline: 'deadline',
   training: 'training',
   review: 'review',
+  audit: 'audit',
+  'internal-audit': 'internal-audit',
+  'lead-audit': 'lead-audit',
   other: 'other',
 } as const;
 
@@ -472,6 +481,9 @@ export const CalendarEventInputEventType = {
   deadline: 'deadline',
   training: 'training',
   review: 'review',
+  audit: 'audit',
+  'internal-audit': 'internal-audit',
+  'lead-audit': 'lead-audit',
   other: 'other',
 } as const;
 
@@ -496,6 +508,9 @@ export const CalendarEventUpdateEventType = {
   deadline: 'deadline',
   training: 'training',
   review: 'review',
+  audit: 'audit',
+  'internal-audit': 'internal-audit',
+  'lead-audit': 'lead-audit',
   other: 'other',
 } as const;
 

@@ -59,7 +59,7 @@ import {
 import { UserAvatar } from "@/components/user-avatar";
 
 const contractSchema = z.object({
-  title: z.string().min(1, "Title is required"),
+  title: z.string().min(1, "Contract name is required"),
   type: z.enum(["SIS", "JMCS"] as const),
   serviceType: z.string().optional(),
   status: z.enum(["active", "pending", "completed", "expired"] as const),
@@ -73,6 +73,13 @@ const contractSchema = z.object({
 });
 
 type ContractFormValues = z.infer<typeof contractSchema>;
+
+function addYearsStr(dateStr: string, years: number): string {
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  d.setFullYear(d.getFullYear() + years);
+  return d.toISOString().split("T")[0];
+}
 
 export default function ContractDetail() {
   const [, params] = useRoute("/contracts/:id");
@@ -90,7 +97,7 @@ export default function ContractDetail() {
   const urlParams = new URLSearchParams(window.location.search);
   const [isEditing, setIsEditing] = useState(isNew || urlParams.get("edit") === "true");
 
-  const canManage = user?.roles?.some(r => ["admin", "ADMIN", "IT", "manager"].includes(r)) || ["admin", "ADMIN", "IT", "manager"].includes(user?.role ?? "") || (user as any)?.canManageContracts;
+  const canManage = user?.roles?.some(r => ["admin", "ADMIN", "IT", "officer"].includes(r)) || ["admin", "ADMIN", "IT", "officer"].includes(user?.role ?? "") || (user as any)?.canManageContracts;
   const isJmcsRestricted = !canManage && user?.canAccessJmcs && !user?.canAccessSis;
   const isSisRestricted = !canManage && user?.canAccessSis && !user?.canAccessJmcs;
   const defaultType = isJmcsRestricted ? "JMCS" : isSisRestricted ? "SIS" : "JMCS";
@@ -124,6 +131,16 @@ export default function ContractDetail() {
   });
 
   const initRef = useRef<number | null>(null);
+
+  const watchedType = form.watch("type");
+  const watchedStart = form.watch("startDate");
+  const isSis = watchedType === "SIS";
+
+  useEffect(() => {
+    if (isSis && watchedStart) {
+      form.setValue("endDate", addYearsStr(watchedStart, 3), { shouldDirty: true });
+    }
+  }, [isSis, watchedStart, form]);
 
   useEffect(() => {
     if (contract && !isNew && initRef.current !== contract.id) {
@@ -200,7 +217,7 @@ export default function ContractDetail() {
             <Skeleton className="h-4 w-32" />
           </div>
         </div>
-        <Card className="neu rounded-2xl">
+        <Card className="neu rounded-lg">
           <CardContent className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {Array(6).fill(0).map((_, i) => (
@@ -297,8 +314,8 @@ export default function ContractDetail() {
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <Card className="neu rounded-2xl">
-            <CardHeader className="border-b border-gray-200/60">
+          <Card className="neu rounded-lg">
+            <CardHeader className="border-b border-border">
               <CardTitle className="text-lg flex items-center gap-2">
                 <Icon name="file-text" className="text-primary" size={20} />
                 Contract Details
@@ -311,7 +328,7 @@ export default function ContractDetail() {
                   name="title"
                   render={({ field }) => (
                     <FormItem className="md:col-span-2">
-                      <FormLabel>Title</FormLabel>
+                      <FormLabel>Contract Name</FormLabel>
                       <FormControl>
                         <Input {...field} disabled={!isEditing} />
                       </FormControl>
@@ -475,10 +492,17 @@ export default function ContractDetail() {
                     <FormItem>
                       <FormLabel className="flex items-center gap-2">
                         <Icon name="calendar" className="text-muted-foreground" size={16} />
-                        End Date
+                        {isSis ? "End Date (auto)" : "End Date"}
                       </FormLabel>
                       <FormControl>
-                        <Input type="date" {...field} disabled={!isEditing} />
+                        {isSis ? (
+                          <div className="h-10 px-3 flex items-center text-sm font-medium rounded-md border border-input bg-muted text-muted-foreground whitespace-nowrap overflow-hidden">
+                            {field.value ? format(new Date(field.value), "MMM d, yyyy") : "—"}
+                            <span className="ml-2 text-[11px] text-muted-foreground/80">(renewed after 3 yrs)</span>
+                          </div>
+                        ) : (
+                          <Input type="date" {...field} disabled={!isEditing} />
+                        )}
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -548,7 +572,7 @@ export default function ContractDetail() {
               <Button type="button" variant="outline" onClick={() => setIsEditing(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+              <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending} variant="success">
                 {(createMutation.isPending || updateMutation.isPending) ? "Saving..." : "Save Contract"}
                 <Icon name="save" className="ml-2" size={16} />
               </Button>
@@ -559,8 +583,23 @@ export default function ContractDetail() {
 
       {!isNew && contract && (
         <div className="space-y-6">
+          <Card className="neu rounded-lg">
+            <CardHeader className="border-b">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Icon name="file-text" className="text-primary" size={16} />
+                Contract Document
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <div className="space-y-3">
+                <CurrentDocument contract={contract as any} />
+                {canManage && <UploadButton contractId={contract.id} uploadProgress={uploadProgress} />}
+              </div>
+            </CardContent>
+          </Card>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card className="neu rounded-2xl">
+            <Card className="neu rounded-lg">
               <CardHeader className="border-b">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Icon name="rotate-ccw" className="text-primary" size={16} />
@@ -575,33 +614,18 @@ export default function ContractDetail() {
               </CardContent>
             </Card>
 
-            <Card className="neu rounded-2xl">
+            <Card className="neu rounded-lg">
               <CardHeader className="border-b">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <Icon name="upload" className="text-primary" size={16} />
-                  Upload Document
+                  <Icon name="history" className="text-primary" size={16} />
+                  Contract Timeline
                 </CardTitle>
               </CardHeader>
-              <CardContent className="pt-4">
-                <p className="text-sm text-muted-foreground mb-4">
-                  Attach a PDF, document, or image file to this contract.
-                </p>
-                <UploadButton contractId={contract.id} uploadProgress={uploadProgress} />
+              <CardContent className="pt-4 max-h-[300px] overflow-y-auto">
+                <TimelineView contractId={contract.id} />
               </CardContent>
             </Card>
           </div>
-
-          <Card className="neu rounded-2xl">
-            <CardHeader className="border-b">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Icon name="history" className="text-primary" size={16} />
-                Contract Timeline
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-4 max-h-[300px] overflow-y-auto">
-              <TimelineView contractId={contract.id} />
-            </CardContent>
-          </Card>
         </div>
       )}
       <UploadProgressOverlay uploading={uploadProgress.uploading} progress={uploadProgress.progress} fileName={uploadProgress.fileName} fileSize={uploadProgress.fileSize} onCancel={uploadProgress.cancelUpload} />
@@ -652,9 +676,10 @@ function UploadButton({ contractId, uploadProgress }: { contractId: number; uplo
       return res.json();
     },
     onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: getGetContractQueryKey(contractId as any) });
       toast({ title: "File uploaded", description: data.filename });
     },
-    onError: () => toast({ title: "Upload failed", variant: "destructive" }),
+    onError: (e: Error) => toast({ title: "Upload failed", description: e.message, variant: "destructive" }),
   });
 
   return (
@@ -667,6 +692,40 @@ function UploadButton({ contractId, uploadProgress }: { contractId: number; uplo
         {uploadProgress.uploading ? `${uploadProgress.progress}%` : "Choose File"}
       </Button>
     </div>
+  );
+}
+
+function CurrentDocument({ contract }: { contract: { documentName?: string | null; documentUrl?: string | null } }) {
+  const name = contract.documentName ?? null;
+  const url = contract.documentUrl ?? null;
+
+  if (!name || !url) {
+    return <p className="text-sm text-muted-foreground">No document uploaded yet.</p>;
+  }
+
+  const ext = name.split(".").pop()?.toLowerCase();
+  const isImage = ["jpg", "jpeg", "png", "gif", "webp", "bmp"].includes(ext ?? "");
+
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group flex items-center gap-3 rounded-lg border border-border p-3 hover:bg-muted/40 transition-colors"
+      title={name}
+    >
+      {isImage ? (
+        <img src={url} alt={name} className="h-12 w-12 shrink-0 rounded-md border border-border object-cover" />
+      ) : (
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md border border-border bg-muted/40">
+          <Icon name="file-text" size={20} className="text-muted-foreground" />
+        </span>
+      )}
+      <div className="min-w-0">
+        <p className="text-sm font-medium truncate">{name}</p>
+        <p className="text-xs text-primary">Open document</p>
+      </div>
+    </a>
   );
 }
 

@@ -47,7 +47,7 @@ export default function AdminInvoices() {
 
       <div className="flex justify-end"><Button size="sm" onClick={openAdd}><Icon name="plus" className="mr-2" size={16} /> Create Invoice</Button></div>
 
-      <Card className="neu rounded-2xl"><CardContent className="p-0">
+      <Card className="neu rounded-lg"><CardContent className="p-0">
         <Table>
           <TableHeader><TableRow>
             <TableHead>Invoice #</TableHead><TableHead>Company</TableHead><TableHead>Client</TableHead><TableHead>Amount</TableHead><TableHead>Status</TableHead><TableHead>Due</TableHead><TableHead className="w-20"></TableHead>

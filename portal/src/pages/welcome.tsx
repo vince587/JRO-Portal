@@ -57,7 +57,7 @@ export default function Welcome() {
         <div className="flex flex-col items-center justify-center gap-6 px-10 py-14 text-center">
           <div
             className="w-16 h-16 rounded-2xl flex items-center justify-center"
-            style={{ backgroundColor: "#c0152b" }}
+            style={{ backgroundColor: "hsl(var(--primary))" }}
           >
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2">
               <path d="M12 2 2 7l10 5 10-5-10-5z" />
@@ -67,7 +67,7 @@ export default function Welcome() {
          </div>
 
           <div>
-            <h1 className="text-2xl font-bold mb-1" style={{ color: "#0a1f44" }}>Internal Portal</h1>
+            <h1 className="text-2xl font-bold mb-1" style={{ color: "#001B48" }}>Internal Portal</h1>
             <p className="text-sm" style={{ color: "rgba(15,23,42,0.6)" }}>
               Opening the desktop app…
            </p>
@@ -76,8 +76,8 @@ export default function Welcome() {
           {installed === null && (
             <div className="flex items-center gap-2 text-sm" style={{ color: "rgba(15,23,42,0.5)" }}>
               <span
-                className="w-4 h-4 rounded-full border-2 border-slate-300 animate-spin"
-                style={{ borderTopColor: "#c0152b" }}
+                className="w-4 h-4 rounded-full border-2 border-input animate-spin"
+                style={{ borderTopColor: "hsl(var(--primary))" }}
               />
               Checking for the desktop app
            </div>
@@ -99,13 +99,13 @@ export default function Welcome() {
                   href={download.url}
                   download
                   className="w-full py-3 rounded-lg text-sm font-bold text-white transition-all text-center"
-                  style={{ backgroundColor: "#c0152b", boxShadow: "0 4px 16px rgba(192,21,43,0.35)" }}
+                  style={{ backgroundColor: "hsl(var(--primary))", boxShadow: "0 4px 16px rgba(37,99,235,0.35)" }}
                 >
                   Download for Windows
                </a>
               ) : !download.loading ? (
                 <p
-                  className="w-full py-3 rounded-lg text-sm font-semibold text-center border border-slate-200"
+                  className="w-full py-3 rounded-lg text-sm font-semibold text-center border border-border"
                   style={{ color: "rgba(15,23,42,0.4)" }}
                 >
                   Installer not published yet. Contact your administrator.
@@ -113,8 +113,8 @@ export default function Welcome() {
               ) : null}
               <button
                 onClick={openApp}
-                className="w-full py-3 rounded-lg text-sm font-semibold border border-slate-300 hover:bg-slate-50 transition-all"
-                style={{ color: "#0a1f44" }}
+                className="w-full py-3 rounded-lg text-sm font-semibold border border-input hover:bg-muted/60 transition-all"
+                style={{ color: "#001B48" }}
               >
                 Open desktop app
              </button>

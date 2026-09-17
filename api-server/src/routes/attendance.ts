@@ -4,7 +4,7 @@ import {
   getAll, getDoc, createDoc, updateDoc, queryWhere,
   type EmployeeDoc, type AttendanceDoc, type TimesheetDoc,
 } from "../lib/firebase-db";
-import { requireRole, requireAuth, hasRole } from "../middlewares/auth";
+import { requireRoleOrPermission, requireAuth, hasRole } from "../middlewares/auth";
 import { emitChange } from "./sse";
 import { logger } from "../lib/logger";
 
@@ -93,8 +93,8 @@ export interface OfficialHoursConfig {
 }
 
 const DEFAULT_OFFICIAL_HOURS: OfficialHoursConfig = {
-  regular: { arrival: "08:00", departure: "17:00", hours: 8 },
-  saturday: { arrival: "08:00", departure: "12:00", hours: 4 },
+  regular: { arrival: "08:30", departure: "17:30", hours: 8 },
+  saturday: { arrival: "08:30", departure: "12:00", hours: 4 },
 };
 
 router.get("/official-hours", requireAuth, async (req, res): Promise<void> => {
@@ -178,7 +178,7 @@ router.post("/attendance/clock-out", requireAuth, async (req, res): Promise<void
 
 router.get("/attendance", requireAuth, async (req, res): Promise<void> => {
   const currentUser = req.currentUser!;
-  const isAdmin = hasRole(currentUser, "admin", "ADMIN", "IT");
+  const isAdmin = hasRole(currentUser, "admin", "ADMIN", "IT") || !!currentUser.canAccessAdmin;
   const from = typeof req.query.from === "string" ? req.query.from : undefined;
   const to = typeof req.query.to === "string" ? req.query.to : undefined;
   let records: AttendanceDoc[];
@@ -194,7 +194,7 @@ router.get("/attendance", requireAuth, async (req, res): Promise<void> => {
   res.json(filtered.map(mapAttendance));
 });
 
-router.get("/attendance/report", requireRole("admin", "ADMIN", "IT"), async (req, res): Promise<void> => {
+router.get("/attendance/report", requireRoleOrPermission(["admin", "ADMIN", "IT"], "canAccessAdmin"), async (req, res): Promise<void> => {
   const from = typeof req.query.from === "string" ? req.query.from : undefined;
   const to = typeof req.query.to === "string" ? req.query.to : undefined;
   let records = await getAll<AttendanceDoc>("attendance");
@@ -244,7 +244,7 @@ const ReviewTimesheetBody = z.object({
 
 router.get("/timesheets", requireAuth, async (req, res): Promise<void> => {
   const currentUser = req.currentUser!;
-  const isAdmin = hasRole(currentUser, "admin", "ADMIN", "IT");
+  const isAdmin = hasRole(currentUser, "admin", "ADMIN", "IT") || !!currentUser.canAccessAdmin;
   let sheets: TimesheetDoc[];
   if (isAdmin) {
     sheets = await getAll<TimesheetDoc>("timesheets", "createdAt", "desc");
@@ -290,7 +290,7 @@ router.post("/timesheets", requireAuth, async (req, res): Promise<void> => {
   res.status(201).json(mapTimesheet(sheet));
 });
 
-router.patch("/timesheets/:id", requireRole("admin", "ADMIN", "IT"), async (req, res): Promise<void> => {
+router.patch("/timesheets/:id", requireRoleOrPermission(["admin", "ADMIN", "IT"], "canAccessAdmin"), async (req, res): Promise<void> => {
   const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const existing = await getDoc<TimesheetDoc>("timesheets", id);
   if (!existing) { res.status(404).json({ error: "Timesheet not found" }); return; }

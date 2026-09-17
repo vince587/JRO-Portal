@@ -62,7 +62,7 @@ export default function ChangePassword() {
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-6">
-        <Card className="w-full max-w-md neu rounded-2xl">
+        <Card className="w-full max-w-md neu rounded-lg">
           <CardContent className="pt-6 text-center text-muted-foreground">
             You must be logged in to change your password.
           </CardContent>
@@ -78,7 +78,7 @@ export default function ChangePassword() {
           <Icon name="shield-alert" className="flex-shrink-0" size={20} />
           <p>You are required to set a new password before you can continue. This helps keep your account secure.</p>
         </div>
-        <Card className="neu rounded-2xl">
+        <Card className="neu rounded-lg">
           <CardHeader className="border-b">
             <CardTitle className="flex items-center gap-2">
               <Icon name="lock" className="text-primary" size={20} />

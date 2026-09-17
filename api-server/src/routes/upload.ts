@@ -1,9 +1,9 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import multer from "multer";
 import path from "path";
-import { requirePermission, requireAuth, hasRole } from "../middlewares/auth";
+import { requirePermission, requireAnyPermission, requireAuth, hasRole } from "../middlewares/auth";
 import {
-  getDoc, createDoc, getStorageBucket,
+  getDoc, createDoc, updateDoc, getStorageBucket,
   type ContractDoc, type ProjectDoc, type CertificateDoc, type EmployeeDoc, type HrisDocumentDoc,
 } from "../lib/firebase-db";
 import { emitChange } from "./sse";
@@ -21,6 +21,20 @@ const upload = multer({
     else cb(new Error("File type not allowed"));
   },
 });
+
+function handleUpload(req: Request, res: Response, next: NextFunction) {
+  upload.single("file")(req, res, (err: unknown) => {
+    if (err) {
+      const e = err as Error & { code?: string };
+      let message = "Upload failed";
+      if (e.code === "LIMIT_FILE_SIZE") message = "File is too large (max 10MB)";
+      else if (e.message === "File type not allowed") message = "File type not allowed. Use PDF, DOC, DOCX, XLS, XLSX, CSV, JPG, PNG, or TXT";
+      res.status(400).json({ error: message });
+      return;
+    }
+    next();
+  });
+}
 
 /**
  * Persist an uploaded file to Firebase Storage (cloud bucket) so it survives
@@ -47,12 +61,24 @@ async function saveToStorage(
   return { url, storedAs };
 }
 
-router.post("/upload/contract/:id", requirePermission("canAccessJmcs"), upload.single("file"), async (req, res): Promise<void> => {
+router.post("/upload/contract/:id", requireAnyPermission("canAccessJmcs", "canAccessSis"), handleUpload, async (req, res): Promise<void> => {
   const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   if (!req.file) { res.status(400).json({ error: "No file uploaded" }); return; }
   const contract = await getDoc<ContractDoc>("contracts", id);
   if (!contract) { res.status(404).json({ error: "Contract not found" }); return; }
+  const currentUser = req.currentUser!;
+  const typeAllowed = hasRole(currentUser, "admin", "ADMIN", "IT")
+    || (contract.type === "SIS" && !!currentUser.canAccessSis)
+    || (contract.type === "JMCS" && !!currentUser.canAccessJmcs);
+  if (!typeAllowed) {
+    res.status(403).json({ error: "sorry you dont have permission to upload to this contract" }); return;
+  }
   const { url, storedAs } = await saveToStorage("contracts", req.file.originalname, req.file.buffer, req.file.mimetype);
+  await updateDoc<ContractDoc>("contracts", id, {
+    documentName: req.file.originalname,
+    documentStoredAs: storedAs,
+    updatedAt: new Date().toISOString(),
+  });
   await createDoc("activity", {
     type: "contract",
     description: `File "${req.file.originalname}" uploaded to contract "${contract.title}"`,
@@ -63,7 +89,7 @@ router.post("/upload/contract/:id", requirePermission("canAccessJmcs"), upload.s
   res.json({ filename: req.file.originalname, storedAs, url, size: req.file.size });
 });
 
-router.post("/upload/project/:id", requirePermission("canAccessJmcs"), upload.single("file"), async (req, res): Promise<void> => {
+router.post("/upload/project/:id", requirePermission("canAccessJmcs"), handleUpload, async (req, res): Promise<void> => {
   const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   if (!req.file) { res.status(400).json({ error: "No file uploaded" }); return; }
   const project = await getDoc<ProjectDoc>("projects", id);
@@ -79,7 +105,7 @@ router.post("/upload/project/:id", requirePermission("canAccessJmcs"), upload.si
   res.json({ filename: req.file.originalname, storedAs, url, size: req.file.size });
 });
 
-router.post("/upload/hris/:id", requireAuth, upload.single("file"), async (req, res): Promise<void> => {
+router.post("/upload/hris/:id", requireAuth, handleUpload, async (req, res): Promise<void> => {
   const currentUser = req.currentUser!;
   const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   if (!req.file) { res.status(400).json({ error: "No file uploaded" }); return; }
@@ -111,7 +137,7 @@ router.post("/upload/hris/:id", requireAuth, upload.single("file"), async (req, 
   res.json({ id: doc.id, filename: req.file.originalname, storedAs, url, size: req.file.size });
 });
 
-router.post("/upload/bulk-certificates", requirePermission("canAccessJmcs"), upload.single("file"), async (req, res): Promise<void> => {
+router.post("/upload/bulk-certificates", requirePermission("canAccessJmcs"), handleUpload, async (req, res): Promise<void> => {
   if (!req.file) { res.status(400).json({ error: "No file uploaded" }); return; }
   const csvContent = req.file.buffer.toString("utf-8");
   const lines = csvContent.split("\n").filter(l => l.trim());

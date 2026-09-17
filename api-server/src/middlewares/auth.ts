@@ -8,7 +8,7 @@ export function normalizeRole(role: string | undefined): string {
   const r = role.trim();
   if (r.toLowerCase() === "admin") return "ADMIN";
   if (r.toLowerCase() === "it") return "IT";
-  if (r.toLowerCase() === "manager") return "manager";
+  if (r.toLowerCase() === "manager" || r.toLowerCase() === "officer") return "officer";
   return r; // keep staff/other as-is
 }
 
@@ -38,6 +38,7 @@ declare global {
         canManageCertificates: boolean;
         canAccessProjects: boolean;
         canAccessAdmin: boolean;
+        canAccessDevelopers: boolean;
       };
     }
   }
@@ -71,6 +72,7 @@ export async function loadUser(req: Request, _res: Response, next: NextFunction)
             canManageCertificates: user.canManageCertificates ?? false,
             canAccessProjects: user.canAccessProjects ?? false,
             canAccessAdmin: user.canAccessAdmin ?? false,
+            canAccessDevelopers: user.canAccessDevelopers ?? false,
           };
         }
       }
@@ -101,6 +103,30 @@ export function requireRole(...roles: string[]) {
   };
 }
 
+// Passes if the user holds any of the given roles OR has every listed
+// permission flag. Unlike requirePermission, this does NOT auto-pass
+// admin/ADMIN/IT unless those roles are included in the roles list.
+export function requireRoleOrPermission(roles: string[], ...permissions: (keyof NonNullable<Request["currentUser"]>)[]) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (!req.currentUser) {
+      res.status(401).json({ error: "Not authenticated" });
+      return;
+    }
+    if (hasRole(req.currentUser, ...roles)) {
+      next();
+      return;
+    }
+    for (const perm of permissions) {
+      if (!req.currentUser[perm]) {
+        res.status(403).json({ error: "sorry you dont have permission to access this resource" });
+        return;
+      }
+    }
+    next();
+  };
+}
+
+// Passes if the user is admin/ADMIN/IT OR holds every listed permission flag.
 export function requirePermission(...permissions: (keyof NonNullable<Request["currentUser"]>)[]) {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.currentUser) {
@@ -121,6 +147,7 @@ export function requirePermission(...permissions: (keyof NonNullable<Request["cu
   };
 }
 
+// Passes if the user is admin/ADMIN/IT OR holds at least one listed flag.
 export function requireAnyPermission(...permissions: (keyof NonNullable<Request["currentUser"]>)[]) {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.currentUser) {
@@ -139,5 +166,3 @@ export function requireAnyPermission(...permissions: (keyof NonNullable<Request[
     next();
   };
 }
-
-

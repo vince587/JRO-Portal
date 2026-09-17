@@ -14,11 +14,13 @@ import searchRouter from "./search";
 import reportsRouter from "./reports";
 import uploadRouter from "./upload";
 import tasksRouter from "./tasks";
+import taskCommentsRouter from "./task-comments";
 import leadsRouter from "./leads";
 import sseRouter from "./sse";
 import hrisRouter from "./hris";
 import attendanceRouter from "./attendance";
 import adminRouter from "./admin";
+import announcementsRouter from "./announcements";
 
 const router: IRouter = Router();
 
@@ -42,9 +44,11 @@ router.use(searchRouter);
 router.use(reportsRouter);
 router.use(uploadRouter);
 router.use(tasksRouter);
+router.use(taskCommentsRouter);
 router.use(leadsRouter);
 router.use(hrisRouter);
 router.use(attendanceRouter);
 router.use(adminRouter);
+router.use(announcementsRouter);
 
 export default router;

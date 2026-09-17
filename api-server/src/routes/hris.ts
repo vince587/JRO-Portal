@@ -3,7 +3,7 @@ import { z } from "zod";
 import path from "path";
 import fs from "fs";
 import { getAll, getDoc, getDocByField, createDoc, updateDoc, deleteDoc, queryWhere, getStorageBucket, type EmployeeDoc, type UserDoc, type HrisDocumentDoc, type NotificationDoc } from "../lib/firebase-db";
-import { requireRole, requireAuth, hasRole } from "../middlewares/auth";
+import { requireRoleOrPermission, requireAuth, hasRole } from "../middlewares/auth";
 import { emitChange } from "./sse";
 import { logger } from "../lib/logger";
 import { sendEmail } from "../lib/mailer";
@@ -84,7 +84,7 @@ const UpsertEmployeeBody = z.object({
   pagibigNumber: z.string().optional().default(""),
 });
 
-router.get("/hris/employees", requireRole("admin", "ADMIN", "IT"), async (_req, res): Promise<void> => {
+router.get("/hris/employees", requireRoleOrPermission(["admin", "ADMIN", "IT"], "canAccessAdmin"), async (_req, res): Promise<void> => {
   const employees = await getAll<EmployeeDoc>("employees", "createdAt", "desc");
   const currentUser = _req.currentUser!;
   res.json(employees.map(mapEmployee));
@@ -95,20 +95,20 @@ router.get("/hris/employees/:id", requireAuth, async (req, res): Promise<void> =
   const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const employee = await getDoc<EmployeeDoc>("employees", id);
   if (!employee) { res.status(404).json({ error: "Employee not found" }); return; }
-  if (!hasRole(currentUser, "admin", "ADMIN", "IT") && employee.userId !== currentUser.id) {
+  if (!hasRole(currentUser, "admin", "ADMIN", "IT") && !currentUser.canAccessAdmin && employee.userId !== currentUser.id) {
     res.status(403).json({ error: "Access denied" }); return;
   }
   res.json(mapEmployee(employee));
 });
 
-router.get("/hris/employees/by-user/:userId", requireRole("admin", "ADMIN", "IT"), async (req, res): Promise<void> => {
+router.get("/hris/employees/by-user/:userId", requireRoleOrPermission(["admin", "ADMIN", "IT"], "canAccessAdmin"), async (req, res): Promise<void> => {
   const userId = Array.isArray(req.params.userId) ? req.params.userId[0] : req.params.userId;
   const employees = await queryWhere<EmployeeDoc>("employees", "userId", "==", userId);
   if (employees.length === 0) { res.status(404).json({ error: "Employee not found" }); return; }
   res.json(mapEmployee(employees[0]));
 });
 
-router.post("/hris/employees", requireRole("admin", "ADMIN", "IT"), async (req, res): Promise<void> => {
+router.post("/hris/employees", requireRoleOrPermission(["admin", "ADMIN", "IT"], "canAccessAdmin"), async (req, res): Promise<void> => {
   const parsed = UpsertEmployeeBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const existing = await queryWhere<EmployeeDoc>("employees", "userId", "==", parsed.data.userId);
@@ -155,7 +155,7 @@ router.patch("/hris/employees/:id", requireAuth, async (req, res): Promise<void>
   const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const existing = await getDoc<EmployeeDoc>("employees", id);
   if (!existing) { res.status(404).json({ error: "Employee not found" }); return; }
-  const isAdmin = hasRole(currentUser, "admin", "ADMIN", "IT");
+  const isAdmin = hasRole(currentUser, "admin", "ADMIN", "IT") || !!currentUser.canAccessAdmin;
   if (!isAdmin && existing.userId !== currentUser.id) {
     res.status(403).json({ error: "Access denied" }); return;
   }
@@ -211,7 +211,7 @@ router.patch("/hris/employees/:id", requireAuth, async (req, res): Promise<void>
   res.json(mapEmployee(updated!));
 });
 
-router.delete("/hris/employees/:id", requireRole("admin", "ADMIN", "IT"), async (req, res): Promise<void> => {
+router.delete("/hris/employees/:id", requireRoleOrPermission(["admin", "ADMIN", "IT"], "canAccessAdmin"), async (req, res): Promise<void> => {
   const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const existing = await getDoc<EmployeeDoc>("employees", id);
   if (!existing) { res.status(404).json({ error: "Employee not found" }); return; }
@@ -238,7 +238,7 @@ router.get("/hris/employees/:id/documents", requireAuth, async (req, res): Promi
   const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const employee = await getDoc<EmployeeDoc>("employees", id);
   if (!employee) { res.status(404).json({ error: "Employee not found" }); return; }
-  if (!hasRole(currentUser, "admin", "ADMIN", "IT") && employee.userId !== currentUser.id) {
+  if (!hasRole(currentUser, "admin", "ADMIN", "IT") && !currentUser.canAccessAdmin && employee.userId !== currentUser.id) {
     res.status(403).json({ error: "Access denied" }); return;
   }
   const docs = await queryWhere<HrisDocumentDoc>("hrisDocuments", "employeeRef", "==", id, "uploadedAt", "desc");
@@ -251,7 +251,7 @@ router.get("/hris/documents/:docId", requireAuth, async (req, res): Promise<void
   const doc = await getDoc<HrisDocumentDoc>("hrisDocuments", docId);
   if (!doc) { res.status(404).json({ error: "Document not found" }); return; }
   const employee = await getDoc<EmployeeDoc>("employees", doc.employeeRef);
-  if (!hasRole(currentUser, "admin", "ADMIN", "IT") && employee?.userId !== currentUser.id) {
+  if (!hasRole(currentUser, "admin", "ADMIN", "IT") && !currentUser.canAccessAdmin && employee?.userId !== currentUser.id) {
     res.status(403).json({ error: "Access denied" }); return;
   }
   res.json(mapHrisDocument(doc));
@@ -263,7 +263,7 @@ router.get("/hris/documents/:docId/download", requireAuth, async (req, res): Pro
   const doc = await getDoc<HrisDocumentDoc>("hrisDocuments", docId);
   if (!doc) { res.status(404).json({ error: "Document not found" }); return; }
   const employee = await getDoc<EmployeeDoc>("employees", doc.employeeRef);
-  if (!hasRole(currentUser, "admin", "ADMIN", "IT") && employee?.userId !== currentUser.id) {
+  if (!hasRole(currentUser, "admin", "ADMIN", "IT") && !currentUser.canAccessAdmin && employee?.userId !== currentUser.id) {
     res.status(403).json({ error: "Access denied" }); return;
   }
   const filePath = path.join(UPLOAD_DIR, doc.storedAs);
@@ -324,7 +324,7 @@ router.get("/hris/my-profile", requireAuth, async (req, res): Promise<void> => {
   res.json(null);
 });
 
-router.get("/hris/stats", requireRole("admin", "ADMIN", "IT"), async (_req, res): Promise<void> => {
+router.get("/hris/stats", requireRoleOrPermission(["admin", "ADMIN", "IT"], "canAccessAdmin"), async (_req, res): Promise<void> => {
   const employees = await getAll<EmployeeDoc>("employees", "createdAt", "desc");
   const total = employees.length;
   const regular = employees.filter(e => e.employmentStatus === "Regular").length;
@@ -414,7 +414,7 @@ router.get("/hris/leaves/balance", requireAuth, async (req, res): Promise<void> 
 
 router.get("/hris/leaves", requireAuth, async (req, res): Promise<void> => {
   const currentUser = req.currentUser!;
-  const isAdmin = ["ADMIN", "admin"].includes(currentUser.role) || currentUser.roles?.some((r: string) => ["ADMIN", "admin"].includes(r));
+  const isAdmin = ["ADMIN", "admin"].includes(currentUser.role) || currentUser.roles?.some((r: string) => ["ADMIN", "admin"].includes(r)) || !!currentUser.canAccessAdmin;
   if (isAdmin) {
     const leaves = await getAll("leaves", "createdAt", "desc");
     res.json(leaves.map(mapLeave));
@@ -429,7 +429,7 @@ router.get("/hris/leaves/:id", requireAuth, async (req, res): Promise<void> => {
   const leave = await getDoc<any>("leaves", id);
   if (!leave) { res.status(404).json({ error: "Leave not found" }); return; }
   const currentUser = req.currentUser!;
-  const isAdmin = ["ADMIN", "admin"].includes(currentUser.role) || currentUser.roles?.some((r: string) => ["ADMIN", "admin"].includes(r));
+  const isAdmin = ["ADMIN", "admin"].includes(currentUser.role) || currentUser.roles?.some((r: string) => ["ADMIN", "admin"].includes(r)) || !!currentUser.canAccessAdmin;
   if (!isAdmin && leave.userId !== currentUser.id) {
     res.status(403).json({ error: "Access denied" }); return;
   }
@@ -472,7 +472,7 @@ router.post("/hris/leaves", requireAuth, async (req, res): Promise<void> => {
   res.status(201).json(mapLeave(leave));
 });
 
-router.patch("/hris/leaves/:id", requireRole("admin", "ADMIN", "IT"), async (req, res): Promise<void> => {
+router.patch("/hris/leaves/:id", requireRoleOrPermission(["admin", "ADMIN", "IT"], "canAccessAdmin"), async (req, res): Promise<void> => {
   const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const existing = await getDoc<any>("leaves", id);
   if (!existing) { res.status(404).json({ error: "Leave not found" }); return; }

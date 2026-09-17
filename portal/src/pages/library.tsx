@@ -784,7 +784,7 @@ function FolderDialog({ open, onOpenChange, section, editing, onSaved, canEdit }
 
 export default function Library() {
   const { user } = useAuth();
-  const isAdmin = user?.roles?.some(r => ["admin", "ADMIN", "IT", "manager"].includes(r)) || ["admin", "ADMIN", "IT", "manager"].includes(user?.role ?? "");
+  const isAdmin = user?.roles?.some(r => ["admin", "ADMIN", "IT", "officer"].includes(r)) || ["admin", "ADMIN", "IT", "officer"].includes(user?.role ?? "");
   const canEdit = isAdmin || !!user?.canAccessJmcs || !!user?.canAccessSis;
   const { toast } = useToast();
   const { open: openViewer, node: viewerNode } = useDocumentViewer();
@@ -965,13 +965,7 @@ export default function Library() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2.5">
-            <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-muted">
-              <Icon name="library" className="text-muted-foreground" size={20} />
-            </div>
-            Library
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1 ml-11">Internal operations materials and external training resources.</p>
+          <p className="text-sm text-muted-foreground">Internal operations materials and external training resources.</p>
         </div>
         {canEdit && (
           <div className="flex gap-2 ml-11 sm:ml-0">
@@ -1101,7 +1095,7 @@ export default function Library() {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">—</td>
-                    <td className="px-4 py-3"><span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">Folder</span></td>
+                    <td className="px-4 py-3"><span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-foreground/80 dark:bg-slate-800 dark:text-muted-foreground/60">Folder</span></td>
                     <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{format(parseISO(f.createdAt), "MMM d, yyyy")}</td>
                     <td className="px-4 py-3 text-muted-foreground">—</td>
                     <td className="px-4 py-3">
@@ -1145,7 +1139,7 @@ export default function Library() {
                     <td className="px-4 py-3 text-muted-foreground">{m.folderId ? folderName(m.folderId) : "Unfiled"}</td>
                     <td className="px-4 py-3">
                       {(m.attachments?.length ?? 0) > 0 ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-foreground/80 dark:bg-slate-800 dark:text-muted-foreground/60">
                           {attTypeLabel(m.attachments![0].type)}
                         </span>
                       ) : m.url ? (

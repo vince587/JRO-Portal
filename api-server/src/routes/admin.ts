@@ -1,11 +1,12 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
-import { getAll, getDoc, createDoc, updateDoc, deleteDoc } from "../lib/firebase-db";
-import { requireRole } from "../middlewares/auth";
+import { getAll, getDoc, createDoc, updateDoc, deleteDoc, queryWhere, type AttendanceDoc } from "../lib/firebase-db";
+import { requireRoleOrPermission } from "../middlewares/auth";
+import { emitChange } from "./sse";
 
 const router: IRouter = Router();
 
-router.use(requireRole("admin", "ADMIN", "IT"));
+router.use(requireRoleOrPermission(["admin", "ADMIN", "IT"], "canAccessAdmin"));
 
 const COMPANY_OPTIONS = ["JMCS", "SIS Certification and Inspection Philippines OPC"] as const;
 
@@ -545,6 +546,126 @@ router.put("/admin/official-hours", async (req, res) => {
   const now = new Date().toISOString();
   await createDoc("payroll_settings", { ...parsed.data, updatedAt: now }, "official_hours");
   res.json({ ...parsed.data, updatedAt: now });
+});
+
+// ── Attendance Correction (admin) ──
+
+const AttendanceEditSchema = z.object({
+  userId: z.string().min(1, "userId is required"),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "date must be YYYY-MM-DD"),
+  clockIn: z.string().optional(),
+  clockOut: z.string().optional(),
+});
+
+function toLocalIso(date: string, hhmm: string): string {
+  return `${date}T${hhmm}:00`;
+}
+
+function mapAdminAttendance(a: AttendanceDoc) {
+  return {
+    id: a.id,
+    userId: a.userId,
+    userFullName: a.userFullName || "",
+    employeeId: a.employeeId || "",
+    date: a.date,
+    clockIn: a.clockIn ?? null,
+    clockOut: a.clockOut ?? null,
+    hoursWorked: a.hoursWorked ?? 0,
+    status: a.status || "present",
+    notes: a.notes ?? null,
+    createdAt: a.createdAt,
+    updatedAt: a.updatedAt,
+  };
+}
+
+// Create or update an employee's clock-in/out for a specific date (used when an
+// employee forgot to clock in/out). A provided empty string clears that field.
+router.post("/admin/attendance", async (req, res) => {
+  const parsed = AttendanceEditSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+  const { userId, date } = parsed.data;
+  let { clockIn, clockOut } = parsed.data;
+  for (const [field, v] of [["clockIn", clockIn], ["clockOut", clockOut]] as const) {
+    if (typeof v === "string" && v !== "" && !TIME_PATTERN.test(v)) {
+      res.status(400).json({ error: `${field} must be HH:MM (e.g. 08:30)` });
+      return;
+    }
+  }
+
+  const user = await getDoc<{ fullName?: string | null; username?: string }>("users", userId);
+  const name = user?.fullName || user?.username || userId;
+  const employee = (await queryWhere<{ employeeId?: string }>("employees", "userId", "==", userId))[0];
+  const employeeId = employee?.employeeId || "";
+
+  const existing = (await queryWhere<AttendanceDoc>("attendance", "userId", "==", userId)).find(r => r.date === date);
+
+  if (clockIn === "") clockIn = undefined;
+  if (clockOut === "") clockOut = undefined;
+
+  const clockInIso = clockIn !== undefined ? toLocalIso(date, clockIn) : (existing?.clockIn ?? null);
+  const clockOutIso = clockOut !== undefined ? toLocalIso(date, clockOut) : (existing?.clockOut ?? null);
+  const hoursWorked = clockInIso && clockOutIso
+    ? Math.round(Math.max(0, (new Date(clockOutIso).getTime() - new Date(clockInIso).getTime()) / 3600000) * 100) / 100
+    : 0;
+
+  const now = new Date().toISOString();
+  const actor = (req.currentUser!.fullName || req.currentUser!.username) as string;
+
+  let record: AttendanceDoc;
+  if (existing?.id) {
+    await updateDoc<AttendanceDoc>("attendance", existing.id, {
+      userId,
+      userFullName: name,
+      employeeId,
+      clockIn: clockInIso ?? "",
+      clockOut: clockOutIso,
+      hoursWorked,
+      updatedAt: now,
+    });
+    record = { ...existing, userFullName: name, employeeId, clockIn: clockInIso ?? "", clockOut: clockOutIso, hoursWorked, updatedAt: now };
+  } else {
+    record = await createDoc<AttendanceDoc>("attendance", {
+      userId,
+      userFullName: name,
+      employeeId,
+      date,
+      clockIn: clockInIso ?? "",
+      clockOut: clockOutIso,
+      clockInLocation: null,
+      clockOutLocation: null,
+      hoursWorked,
+      status: "present",
+      notes: "Added by admin (manual correction)",
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+
+  await createDoc("activity", {
+    type: "admin",
+    description: `Attendance ${existing?.id ? "updated" : "created"} by ${actor} for ${name} (${date})`,
+    entityId: record.id,
+    timestamp: now,
+  });
+
+  emitChange("attendance", existing?.id ? "updated" : "created", record.id);
+  res.status(existing?.id ? 200 : 201).json(mapAdminAttendance(record));
+});
+
+router.delete("/admin/attendance/:id", async (req, res) => {
+  const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const existing = await getDoc<AttendanceDoc>("attendance", id);
+  if (!existing) { res.status(404).json({ error: "Attendance record not found" }); return; }
+  await deleteDoc("attendance", id);
+  const actor = (req.currentUser!.fullName || req.currentUser!.username) as string;
+  await createDoc("activity", {
+    type: "admin",
+    description: `Attendance deleted by ${actor} for ${existing.userFullName || existing.userId} (${existing.date})`,
+    entityId: id,
+    timestamp: new Date().toISOString(),
+  });
+  emitChange("attendance", "deleted", id);
+  res.json({ success: true });
 });
 
 export default router;

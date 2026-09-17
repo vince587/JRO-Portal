@@ -46,7 +46,7 @@ function Logo() {
       <div className="h-8 w-8 rounded-lg overflow-hidden shadow-sm">
         <img src="/logo internal.png" alt="JMCS" className="h-full w-full object-contain" />
       </div>
-      <span className="text-sm font-semibold text-slate-700">JMCS</span>
+      <span className="text-sm font-semibold text-foreground">JMCS</span>
     </div>
   );
 }

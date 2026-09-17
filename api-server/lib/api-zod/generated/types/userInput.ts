@@ -26,4 +26,5 @@ export interface UserInput {
   canManageCertificates?: boolean;
   canAccessProjects?: boolean;
   canAccessAdmin?: boolean;
+  canAccessDevelopers?: boolean;
 }

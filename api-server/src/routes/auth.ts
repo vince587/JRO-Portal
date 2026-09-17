@@ -45,6 +45,7 @@ function mapUser(u: UserDoc) {
     canManageCertificates: u.canManageCertificates ?? false,
     canAccessProjects: u.canAccessProjects ?? false,
     canAccessAdmin: u.canAccessAdmin ?? false,
+    canAccessDevelopers: u.canAccessDevelopers ?? false,
     photoUrl: u.photoUrl ?? null,
     mustChangePassword: u.mustChangePassword ?? false,
     createdAt: u.createdAt,

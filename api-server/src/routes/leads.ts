@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
-import { requirePermission, requireAnyPermission, hasRole } from "../middlewares/auth";
+import { requireAnyPermission, hasRole } from "../middlewares/auth";
 import {
   getAll, getDoc, createDoc, updateDoc, deleteDoc,
   type LeadDoc,
@@ -11,19 +11,87 @@ const router: IRouter = Router();
 
 router.get("/leads", requireAnyPermission("canAccessJmcs", "canAccessSis"), async (req, res): Promise<void> => {
   if (!req.currentUser) { res.status(401).json({ error: "Not authenticated" }); return; }
-  const isPrivileged = hasRole(req.currentUser, "admin", "ADMIN", "IT", "manager");
+  const userId = req.currentUser.id;
+  const isPrivileged = hasRole(req.currentUser, "admin", "ADMIN", "IT", "officer");
   let rows = await getAll<LeadDoc>("leads", "createdAt", "desc");
   if (!isPrivileged) {
     const canJmcs = req.currentUser.canAccessJmcs;
     const canSis = req.currentUser.canAccessSis;
     rows = rows.filter(l => {
+      if (l.createdById !== userId) return false;
       if (l.type === "JMCS" && !canJmcs) return false;
       if (l.type === "SIS" && !canSis) return false;
       return true;
     });
-    rows = rows.filter(l => l.createdById === req.currentUser!.id);
   }
-  res.json(rows);
+  const creatorIds = Array.from(new Set(rows.map(r => r.createdById).filter((id): id is string => !!id)));
+  const userById = new Map<string, { fullName?: string | null; username?: string; photoUrl?: string | null }>();
+  await Promise.all(creatorIds.map(async (id) => {
+    const u = await getDoc<{ fullName?: string | null; username?: string; photoUrl?: string | null }>("users", id);
+    if (u) userById.set(id, u);
+  }));
+  const mapped = rows.map(l => ({
+    ...l,
+    createdByName: l.createdByName ?? userById.get(l.createdById)?.fullName ?? userById.get(l.createdById)?.username ?? null,
+    createdByPhotoUrl: l.createdByPhotoUrl ?? userById.get(l.createdById)?.photoUrl ?? null,
+  }));
+  res.json(mapped);
+});
+
+router.get("/leads/summary", requireAnyPermission("canAccessJmcs", "canAccessSis"), async (req, res): Promise<void> => {
+  if (!req.currentUser) { res.status(401).json({ error: "Not authenticated" }); return; }
+  const userId = req.currentUser.id;
+  const isPrivileged = hasRole(req.currentUser, "admin", "ADMIN", "IT", "officer");
+  let rows = await getAll<LeadDoc>("leads");
+  if (!isPrivileged) {
+    const canJmcs = req.currentUser.canAccessJmcs;
+    const canSis = req.currentUser.canAccessSis;
+    rows = rows.filter(l => {
+      if (l.createdById !== userId) return false;
+      if (l.type === "JMCS" && !canJmcs) return false;
+      if (l.type === "SIS" && !canSis) return false;
+      return true;
+    });
+  }
+  const now = new Date();
+  const thisMonthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const statuses = ["new", "contacted", "qualified", "lost"];
+  const types = ["JMCS", "SIS"];
+  const byType: Record<string, number> = {};
+  const byStatus: Record<string, number> = {};
+  const byTypeAndStatus: Record<string, Record<string, number>> = {};
+  const byTypeWithPhone: Record<string, number> = {};
+  const byTypeWithEmail: Record<string, number> = {};
+  for (const t of types) {
+    byType[t] = 0;
+    byTypeAndStatus[t] = Object.fromEntries(statuses.map(s => [s, 0]));
+    byTypeWithPhone[t] = 0;
+    byTypeWithEmail[t] = 0;
+  }
+  for (const s of statuses) byStatus[s] = 0;
+  let total = 0;
+  let thisMonth = 0;
+  for (const l of rows) {
+    const type = types.includes(l.type ?? "") ? l.type! : types[0];
+    total++;
+    byType[type] = (byType[type] ?? 0) + 1;
+    byTypeAndStatus[type][l.status] = (byTypeAndStatus[type][l.status] ?? 0) + 1;
+    byStatus[l.status] = (byStatus[l.status] ?? 0) + 1;
+    if (l.phone) byTypeWithPhone[type] = (byTypeWithPhone[type] ?? 0) + 1;
+    if (l.email) byTypeWithEmail[type] = (byTypeWithEmail[type] ?? 0) + 1;
+    if ((l.createdAt ?? "").startsWith(thisMonthPrefix)) thisMonth++;
+  }
+  res.json({
+    total,
+    thisMonth,
+    byType,
+    byStatus,
+    byTypeAndStatus,
+    withPhone: Object.values(byTypeWithPhone).reduce((a, b) => a + b, 0),
+    withEmail: Object.values(byTypeWithEmail).reduce((a, b) => a + b, 0),
+    byTypeWithPhone,
+    byTypeWithEmail,
+  });
 });
 
 router.get("/leads/:id", requireAnyPermission("canAccessJmcs", "canAccessSis"), async (req, res): Promise<void> => {
@@ -31,28 +99,35 @@ router.get("/leads/:id", requireAnyPermission("canAccessJmcs", "canAccessSis"), 
   const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const lead = await getDoc<LeadDoc>("leads", id);
   if (!lead) { res.status(404).json({ error: "Lead not found" }); return; }
-  if (!hasRole(req.currentUser, "admin", "ADMIN", "IT", "manager")) {
+  if (!hasRole(req.currentUser, "admin", "ADMIN", "IT", "officer")) {
+    if (lead.createdById !== req.currentUser.id) {
+      res.status(403).json({ error: "sorry you dont have permission to view this lead" }); return;
+    }
     if (lead.type === "JMCS" && !req.currentUser.canAccessJmcs) {
       res.status(403).json({ error: "sorry you dont have permission to view this lead" }); return;
     }
     if (lead.type === "SIS" && !req.currentUser.canAccessSis) {
       res.status(403).json({ error: "sorry you dont have permission to view this lead" }); return;
     }
-    if (lead.createdById !== req.currentUser.id) {
-      res.status(403).json({ error: "sorry you dont have permission to view this lead" }); return;
-    }
   }
-  res.json(lead);
+  const u = await getDoc<{ fullName?: string | null; username?: string; photoUrl?: string | null }>("users", lead.createdById);
+  const mapped = {
+    ...lead,
+    createdByName: lead.createdByName ?? u?.fullName ?? u?.username ?? null,
+    createdByPhotoUrl: lead.createdByPhotoUrl ?? u?.photoUrl ?? null,
+  };
+  res.json(mapped);
 });
 
 router.post("/leads", requireAnyPermission("canAccessJmcs", "canAccessSis"), async (req, res): Promise<void> => {
   if (!req.currentUser) { res.status(401).json({ error: "Not authenticated" }); return; }
-  const { companyName, contactPerson, email, phone, serviceInterest, notes, type } = req.body;
+  const { companyName, contactPerson, position, email, phone, serviceInterest, notes, status, type } = req.body;
   if (!companyName || !contactPerson) {
     res.status(400).json({ error: "companyName and contactPerson are required" }); return;
   }
   const leadType = type || (req.currentUser.canAccessJmcs ? "JMCS" : "SIS");
-  const isPrivileged = hasRole(req.currentUser, "admin", "ADMIN", "IT", "manager");
+  const leadStatus = ["new", "contacted", "qualified", "lost"].includes(status) ? status : "new";
+  const isPrivileged = hasRole(req.currentUser, "admin", "ADMIN", "IT", "officer");
   if (!isPrivileged) {
     if (leadType === "JMCS" && !req.currentUser.canAccessJmcs) {
       res.status(403).json({ error: "sorry you dont have permission to create this lead" }); return;
@@ -65,13 +140,16 @@ router.post("/leads", requireAnyPermission("canAccessJmcs", "canAccessSis"), asy
   const lead = await createDoc("leads", {
     companyName,
     contactPerson,
+    position: position || null,
     email: email || null,
     phone: phone || null,
     serviceInterest: serviceInterest || null,
-    status: "new",
+    status: leadStatus,
     notes: notes || null,
     type: leadType,
     createdById: req.currentUser.id,
+    createdByName: req.currentUser.fullName || req.currentUser.username,
+    createdByPhotoUrl: req.currentUser.photoUrl ?? null,
     createdAt: now,
     updatedAt: now,
   });
@@ -84,21 +162,22 @@ router.patch("/leads/:id", requireAnyPermission("canAccessJmcs", "canAccessSis")
   const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const existing = await getDoc<LeadDoc>("leads", id);
   if (!existing) { res.status(404).json({ error: "Lead not found" }); return; }
-  if (!hasRole(req.currentUser, "admin", "ADMIN", "IT", "manager")) {
+  if (!hasRole(req.currentUser, "admin", "ADMIN", "IT", "officer")) {
+    if (existing.createdById !== req.currentUser.id) {
+      res.status(403).json({ error: "sorry you dont have permission to update this lead" }); return;
+    }
     if (existing.type === "JMCS" && !req.currentUser.canAccessJmcs) {
       res.status(403).json({ error: "sorry you dont have permission to update this lead" }); return;
     }
     if (existing.type === "SIS" && !req.currentUser.canAccessSis) {
       res.status(403).json({ error: "sorry you dont have permission to update this lead" }); return;
     }
-    if (existing.createdById !== req.currentUser.id) {
-      res.status(403).json({ error: "sorry you dont have permission to update this lead" }); return;
-    }
   }
-  const { companyName, contactPerson, email, phone, serviceInterest, status, notes } = req.body;
+  const { companyName, contactPerson, position, email, phone, serviceInterest, status, notes } = req.body;
   const updateData: Record<string, unknown> = { updatedAt: new Date().toISOString() };
   if (companyName !== undefined) updateData.companyName = companyName;
   if (contactPerson !== undefined) updateData.contactPerson = contactPerson;
+  if (position !== undefined) updateData.position = position || null;
   if (email !== undefined) updateData.email = email || null;
   if (phone !== undefined) updateData.phone = phone || null;
   if (serviceInterest !== undefined) updateData.serviceInterest = serviceInterest || null;
@@ -115,14 +194,14 @@ router.delete("/leads/:id", requireAnyPermission("canAccessJmcs", "canAccessSis"
   const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const existing = await getDoc<LeadDoc>("leads", id);
   if (!existing) { res.status(404).json({ error: "Lead not found" }); return; }
-  if (!hasRole(req.currentUser, "admin", "ADMIN", "IT", "manager")) {
+  if (!hasRole(req.currentUser, "admin", "ADMIN", "IT", "officer")) {
+    if (existing.createdById !== req.currentUser.id) {
+      res.status(403).json({ error: "sorry you dont have permission to delete this lead" }); return;
+    }
     if (existing.type === "JMCS" && !req.currentUser.canAccessJmcs) {
       res.status(403).json({ error: "sorry you dont have permission to delete this lead" }); return;
     }
     if (existing.type === "SIS" && !req.currentUser.canAccessSis) {
-      res.status(403).json({ error: "sorry you dont have permission to delete this lead" }); return;
-    }
-    if (existing.createdById !== req.currentUser.id) {
       res.status(403).json({ error: "sorry you dont have permission to delete this lead" }); return;
     }
   }
@@ -142,7 +221,7 @@ router.post("/leads/bulk-delete", requireAnyPermission("canAccessJmcs", "canAcce
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const isPrivileged = hasRole(req.currentUser, "admin", "ADMIN", "IT", "manager");
+  const isPrivileged = hasRole(req.currentUser, "admin", "ADMIN", "IT", "officer");
   const errors: string[] = [];
   let deleted = 0;
   const now = new Date().toISOString();
@@ -151,15 +230,15 @@ router.post("/leads/bulk-delete", requireAnyPermission("canAccessJmcs", "canAcce
     const existing = await getDoc<LeadDoc>("leads", idStr);
     if (!existing) { errors.push(`${idStr}: not found`); continue; }
     if (!isPrivileged) {
+      if (existing.createdById !== req.currentUser.id) {
+        errors.push(`${idStr}: sorry you dont have permission to delete this lead`);
+        continue;
+      }
       if (existing.type === "JMCS" && !req.currentUser.canAccessJmcs) {
         errors.push(`${idStr}: sorry you dont have permission to delete this lead`);
         continue;
       }
       if (existing.type === "SIS" && !req.currentUser.canAccessSis) {
-        errors.push(`${idStr}: sorry you dont have permission to delete this lead`);
-        continue;
-      }
-      if (existing.createdById !== req.currentUser.id) {
         errors.push(`${idStr}: sorry you dont have permission to delete this lead`);
         continue;
       }

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { Icon } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,11 +16,6 @@ import { useTodayAttendance, useAttendance, useClockIn, useClockOut } from "@/li
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 
-const companyLogos: Record<string, string> = {
-  "JMCS": "/JMCS LOGO.png",
-  "SIS Certification and Inspection Philippines OPC": "/SIS LOGO.png",
-};
-
 const controlNumbers: Record<string, string> = {
   "JMCS": "JMCS-DC-02",
   "SIS Certification and Inspection Philippines OPC": "SISOPC-DC-02",
@@ -31,6 +26,11 @@ function fmtTime(iso: string | null): string {
   try { return format(new Date(iso), "h:mm a"); } catch { return "—"; }
 }
 
+function dayTag(dateStr: string): string | null {
+  const day = parseISO(dateStr).getDay();
+  return day === 6 ? "Sat" : day === 0 ? "Sun" : null;
+}
+
 export default function TimeCardReport() {
   const { toast } = useToast();
   const { data: today, isLoading: todayLoading } = useTodayAttendance();
@@ -39,7 +39,6 @@ export default function TimeCardReport() {
   const clockOut = useClockOut();
   const [company, setCompany] = useState("JMCS");
 
-  const logoUrl = companyLogos[company] || null;
   const controlNo = controlNumbers[company] || "JMCS-DC-02";
 
   const handleClockIn = async () => {
@@ -81,12 +80,9 @@ export default function TimeCardReport() {
         </div>
       </div>
 
-      <Card className="neu rounded-2xl print:shadow-none print:border print:border-gray-300 print:rounded-none" id="time-card-report">
+      <Card className="neu rounded-lg print:shadow-none print:border print:border-gray-300 print:rounded-none" id="time-card-report">
         <CardHeader className="text-center border-b pb-6 print:pb-4">
           <div className="flex flex-col items-center gap-3">
-            {logoUrl && (
-              <img src={logoUrl} alt={company} className="h-16 w-auto object-contain" />
-            )}
             <div>
               <div className="text-2xl font-bold tracking-tight uppercase">Time Card & Attendance Report</div>
               <p className="text-xs text-muted-foreground mt-1">Control No: {controlNo}</p>
@@ -170,9 +166,14 @@ export default function TimeCardReport() {
                     <TableRow>
                       <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">No attendance records yet.</TableCell>
                     </TableRow>
-                  ) : records.map(r => (
-                    <TableRow key={r.id}>
-                      <TableCell className="text-sm">{r.date}</TableCell>
+                  ) : records.map(r => {
+                    const tag = dayTag(r.date);
+                    return (
+                    <TableRow key={r.id} className={tag ? "tc-weekend" : ""}>
+                      <TableCell className="text-sm">
+                        {r.date}
+                        {tag && <span className="tc-day">{tag}</span>}
+                      </TableCell>
                       <TableCell className="text-sm">{fmtTime(r.clockIn)}</TableCell>
                       <TableCell className="text-sm">{fmtTime(r.clockOut)}</TableCell>
                       <TableCell className="text-sm">{r.hoursWorked}h</TableCell>
@@ -186,7 +187,8 @@ export default function TimeCardReport() {
                         </Badge>
                       </TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
@@ -198,6 +200,18 @@ export default function TimeCardReport() {
         @page {
           margin: 0.3in;
           size: auto;
+        }
+        .tc-weekend td { color: #cc0000; }
+        .tc-day {
+          display: inline-block;
+          margin-left: 4px;
+          padding: 0 4px;
+          border-radius: 3px;
+          background: #cc0000;
+          color: #fff;
+          font-size: 0.6rem;
+          font-weight: 700;
+          text-transform: uppercase;
         }
         @media print {
           html, body { background: white !important; height: auto !important; overflow: visible !important; }

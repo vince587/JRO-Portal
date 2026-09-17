@@ -7,14 +7,14 @@ import * as z from "zod";
 import { useQueryClient } from "@tanstack/react-query";
 import { Icon } from "@/components/ui/icon"
 
-import { 
-  useGetProject, 
-  useUpdateProject, 
+import {
+  useGetProject,
+  useUpdateProject,
   useCreateProject,
   useDeleteProject,
   getGetProjectQueryKey,
   getListProjectsQueryKey,
-  getGetProjectsSummaryQueryKey
+  getGetProjectsSummaryQueryKey,
 } from "@workspace/api-client-react";
 
 import { Button } from "@/components/ui/button";
@@ -103,7 +103,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const PRIORITY_COLORS: Record<string, string> = {
-  low: "bg-slate-500 text-white",
+  low: "bg-muted/600 text-white",
   medium: "bg-amber-600 text-white",
   high: "bg-red-700 text-white",
 };
@@ -227,7 +227,7 @@ function ProjectGanttTasks({ projectId }: { projectId: string }) {
   const colCount = 4 + MONTHS.length + 4;
 
   if (loading) {
-    return <Card className="neu rounded-2xl"><CardContent className="p-6"><Skeleton className="h-64 w-full" /></CardContent></Card>;
+    return <Card className="neu rounded-lg"><CardContent className="p-6"><Skeleton className="h-64 w-full" /></CardContent></Card>;
   }
 
   return (
@@ -245,7 +245,7 @@ function ProjectGanttTasks({ projectId }: { projectId: string }) {
           .print-gantt .hide-print { display: none !important; }
         }
       `}</style>
-      <Card className={`neu rounded-2xl ${printMode ? "print-gantt" : ""}`}>
+      <Card className={`neu rounded-lg ${printMode ? "print-gantt" : ""}`}>
         <CardHeader className="border-b bg-muted/20 flex items-center justify-between no-print">
           <CardTitle className="text-lg flex items-center gap-2">
             <Icon name="calendar-range" className="text-orange-500" size={20} />
@@ -422,7 +422,7 @@ function ProjectUpload({ projectId, projectTitle, uploadProgress }: { projectId:
   };
 
   return (
-    <Card className="neu rounded-2xl">
+    <Card className="neu rounded-lg">
       <CardHeader className="border-b bg-muted/20">
         <CardTitle className="text-lg flex items-center gap-2">
           <Icon name="paperclip" className="text-indigo-500" size={20} />
@@ -489,7 +489,7 @@ function ProjectChecklist({ projectId }: { projectId: string }) {
   };
 
   return (
-    <Card className="neu rounded-2xl">
+    <Card className="neu rounded-lg">
       <CardHeader className="border-b bg-muted/20">
         <CardTitle className="text-lg flex items-center gap-2">
           <Icon name="clipboard-check" className="text-emerald-500" size={20} />
@@ -581,7 +581,7 @@ function ProjectDepartmentTargets({ projectId }: { projectId: string }) {
   };
 
   return (
-    <Card className="neu rounded-2xl">
+    <Card className="neu rounded-lg">
       <CardHeader className="border-b bg-muted/20">
         <CardTitle className="text-lg flex items-center gap-2">
           <Icon name="target" className="text-indigo-500" size={20} />
@@ -677,10 +677,10 @@ function ClientProgressCard({ projectId, project }: { projectId: string; project
     toast({ title: "Link copied!" });
   };
 
-  if (loading) return <Card className="neu rounded-2xl"><CardContent className="p-6"><Skeleton className="h-32 w-full" /></CardContent></Card>;
+  if (loading) return <Card className="neu rounded-lg"><CardContent className="p-6"><Skeleton className="h-32 w-full" /></CardContent></Card>;
 
   return (
-    <Card className="neu rounded-2xl">
+    <Card className="neu rounded-lg">
       <CardHeader className="border-b bg-muted/20 flex flex-row items-center justify-between">
         <CardTitle className="text-lg flex items-center gap-2">
           <Icon name="eye" className="text-primary" size={20} />
@@ -876,7 +876,7 @@ export default function ProjectDetail() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button type="submit" form="project-form" disabled={updateMutation.isPending}>
+          <Button type="submit" form="project-form" disabled={updateMutation.isPending} variant="success">
             {updateMutation.isPending ? "Saving..." : "Save Project"}
             <Icon name="save" className="ml-2" size={16} />
           </Button>
@@ -909,7 +909,7 @@ export default function ProjectDetail() {
 
       <Form {...form}>
         <form id="project-form" onSubmit={form.handleSubmit(onSubmit)}>
-          <Card className="mb-6 neu rounded-2xl">
+          <Card className="mb-6 neu rounded-lg">
             <CardHeader className="border-b bg-muted/20 py-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <Icon name="briefcase" className="text-indigo-500" size={16} />

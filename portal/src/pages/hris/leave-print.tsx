@@ -60,7 +60,7 @@ export default function HrisLeavePrint() {
         </Button>
       </div>
 
-      <Card className="neu rounded-2xl print:shadow-none print:border print:border-gray-300 print:rounded-none" id="leave-form">
+      <Card className="neu rounded-lg print:shadow-none print:border print:border-gray-300 print:rounded-none" id="leave-form">
         <CardHeader className="text-center border-b pb-6 print:pb-4">
           <div className="flex flex-col items-center gap-3">
             {logoUrl && (

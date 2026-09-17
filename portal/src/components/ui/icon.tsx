@@ -62,6 +62,7 @@ import {
   Mail,
   MapPin,
   Maximize2,
+  Megaphone,
   MessageCircle,
   Minimize2,
   Minus,
@@ -200,6 +201,7 @@ export type IconName =
   | "mail"
   | "map-pin"
   | "maximize-2"
+  | "megaphone"
   | "message-circle"
   | "minimize-2"
   | "minus"
@@ -336,6 +338,7 @@ const iconMap: Record<IconName, React.ComponentType<React.SVGProps<SVGSVGElement
   mail: Mail,
   "map-pin": MapPin,
   "maximize-2": Maximize2,
+  megaphone: Megaphone,
   "message-circle": MessageCircle,
   "minimize-2": Minimize2,
   minus: Minus,

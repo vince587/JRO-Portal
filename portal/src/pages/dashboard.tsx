@@ -19,18 +19,19 @@ import { useAuth } from "@/lib/auth-context";
 
 const COLORS = ["#3b82f6", "#f59e0b", "#10b981", "#ef4444"];
 
-function StatCard({ title, value, icon, children, accent }: { title: string; value: string | number; icon: string; children?: React.ReactNode; accent?: string }) {
+function StatCard({ title, value, icon, children, accent, hint }: { title: string; value: string | number; icon: string; children?: React.ReactNode; accent?: string; hint?: string }) {
   return (
-    <Card className="overflow-hidden border-0 neu rounded-2xl">
+    <Card className="overflow-hidden rounded-xl border-border/70 shadow-sm hover:shadow-md transition-shadow bg-white dark:bg-zinc-900">
       <CardContent className="p-5">
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">{title}</span>
-          <div className="h-9 w-9 rounded-xl neu-inset flex items-center justify-center shrink-0" style={{ color: accent }}>
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{title}</span>
+          <div className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm ring-1 ring-black/5" style={{ backgroundColor: `${accent}14`, color: accent }}>
             <Icon name={icon} size={18} />
           </div>
         </div>
-        <div className="text-3xl font-bold tracking-tight text-gray-900">{value}</div>
-        {children && <div className="flex items-center gap-2 mt-2.5 flex-wrap">{children}</div>}
+        <div className="text-3xl font-bold tracking-tight text-foreground tabular-nums">{value}</div>
+        {hint && <p className="text-xs text-muted-foreground mt-1">{hint}</p>}
+        {children && <div className="flex items-center gap-2 mt-3 flex-wrap">{children}</div>}
       </CardContent>
     </Card>
   );
@@ -52,10 +53,10 @@ export default function Dashboard() {
   const renderStatsCards = () => {
     if (statsLoading) {
       return Array(4).fill(0).map((_, i) => (
-        <Card key={i} className="border-0 neu rounded-2xl">
+        <Card key={i} className="rounded-xl border-border/70 shadow-sm">
           <CardContent className="p-5">
-            <Skeleton className="h-4 w-1/2 mb-4" />
-            <Skeleton className="h-9 w-1/3 mb-3" />
+            <Skeleton className="h-4 w-1/2 mb-5" />
+            <Skeleton className="h-9 w-1/3 mb-4" />
             <Skeleton className="h-3 w-2/3" />
           </CardContent>
         </Card>
@@ -95,7 +96,7 @@ export default function Dashboard() {
       case 'certificate': return <Icon name="shield-check" className="text-emerald-500" size={15} />;
       case 'event': return <Icon name="calendar-days" className="text-amber-500" size={15} />;
       case 'user': return <Icon name="users" className="text-sky-500" size={15} />;
-      default: return <Icon name="activity" className="text-gray-400" size={15} />;
+      default: return <Icon name="activity" className="text-muted-foreground" size={15} />;
     }
   };
 
@@ -130,27 +131,34 @@ export default function Dashboard() {
   return (
     <div data-page="dashboard" className="space-y-6">
       {/* Welcome banner */}
-      <div className="flex items-center gap-4 rounded-2xl bg-gradient-to-r from-blue-600 to-blue-500 p-5 text-white shadow-[0_8px_24px_rgba(37,99,235,0.25)] sm:justify-between">
-        <div className="flex items-center gap-4 min-w-0">
-          <Avatar className="h-12 w-12 ring-2 ring-white/40 shrink-0">
-            <AvatarImage src={(user as any)?.photoUrl || undefined} alt={user?.fullName || user?.username} />
-            <AvatarFallback className="bg-white/20 text-white font-semibold">{getInitials(user?.fullName || user?.username)}</AvatarFallback>
-          </Avatar>
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-white/80">Good {greeting},</p>
-            <h1 className="text-2xl font-bold tracking-tight leading-tight">
-              {user?.fullName?.split(" ")[0] || "User"}
-              <span className="ml-1.5 text-sm font-medium text-white/60">
-                {" · "}{(user as any)?.department ? ((user as any).department === "Both" ? "SIS & JMCS" : (user as any).department) : "Company"}
-              </span>
-            </h1>
-          </div>
+      <div className="relative overflow-hidden rounded-xl border border-border/70 bg-gradient-to-br from-white via-white to-primary/5 dark:from-zinc-900 dark:via-zinc-900 dark:to-primary/10 p-6 shadow-sm">
+        <div aria-hidden className="pointer-events-none absolute inset-0">
+          <div className="absolute -top-16 -right-10 h-48 w-48 rounded-full bg-primary/10 blur-3xl" />
+          <div className="absolute -bottom-20 right-1/4 h-40 w-40 rounded-full bg-sky-400/10 blur-3xl" />
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/25 to-transparent" />
         </div>
-        <div className="hidden shrink-0 text-right sm:block">
-          <p className="text-3xl font-bold tabular-nums leading-none">
-            {format(new Date(), "hh:mm a")}
-          </p>
-          <p className="text-xs text-white/70 mt-1">{format(new Date(), "EEEE, MMM d")}</p>
+        <div className="relative flex items-center gap-4 sm:justify-between">
+          <div className="flex items-center gap-4 min-w-0">
+            <Avatar className="h-12 w-12 ring-2 ring-primary/20 shrink-0">
+              <AvatarImage src={(user as any)?.photoUrl || undefined} alt={user?.fullName || user?.username} />
+              <AvatarFallback className="bg-primary/10 text-primary font-semibold">{getInitials(user?.fullName || user?.username)}</AvatarFallback>
+            </Avatar>
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-primary/70">Good {greeting},</p>
+              <h1 className="font-serif text-2xl font-semibold tracking-tight leading-tight text-foreground">
+                {user?.fullName?.split(" ")[0] || "User"}
+                <span className="ml-1.5 text-sm font-medium text-muted-foreground">
+                  {" · "}{(user as any)?.department ? ((user as any).department === "Both" ? "SIS & JMCS" : (user as any).department) : "Company"}
+                </span>
+              </h1>
+            </div>
+          </div>
+          <div className="hidden shrink-0 text-right sm:block">
+            <p className="font-serif text-3xl font-semibold tabular-nums leading-none text-foreground">
+              {format(new Date(), "hh:mm a")}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">{format(new Date(), "EEEE, MMM d")}</p>
+          </div>
         </div>
       </div>
 
@@ -161,14 +169,14 @@ export default function Dashboard() {
 
       {/* Expirations + Action Required */}
       <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="border-0 neu rounded-2xl lg:col-span-2">
-          <CardHeader className="pb-3 border-b border-gray-200/60">
+        <Card className="rounded-xl border-border/70 shadow-sm lg:col-span-2">
+          <CardHeader className="pb-3 border-b border-border/60">
             <div className="flex items-center gap-2.5">
-              <div className="h-8 w-8 rounded-lg neu-inset rounded-xl flex items-center justify-center">
+              <div className="h-8 w-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
                 <Icon name="bar-chart-3" className="text-amber-500" size={16} />
               </div>
               <div>
-                <CardTitle className="text-sm font-semibold text-gray-800">Upcoming Expirations</CardTitle>
+                <CardTitle className="font-serif text-base font-semibold text-foreground">Upcoming Expirations</CardTitle>
                 <CardDescription>Certificates &amp; Contracts timeline</CardDescription>
               </div>
             </div>
@@ -177,27 +185,27 @@ export default function Dashboard() {
             {statsLoading ? <Skeleton className="h-[240px] w-full" /> : (
               <ResponsiveContainer width="100%" height={240}>
                 <BarChart data={expiryData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="name" className="text-xs" tick={{ fill: "#9ca3af" }} />
-                  <YAxis className="text-xs" tick={{ fill: "#9ca3af" }} allowDecimals={false} />
-                  <Tooltip cursor={{ fill: "rgba(0,0,0,0.04)" }} />
-                  <Legend />
-                  <Bar dataKey="expiring" fill="#f59e0b" name="Certificates" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="contracts" fill="#3b82f6" name="Contracts" radius={[4, 4, 0, 0]} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                  <XAxis dataKey="name" className="text-xs" tick={{ fill: "#9ca3af" }} axisLine={false} tickLine={false} />
+                  <YAxis className="text-xs" tick={{ fill: "#9ca3af" }} allowDecimals={false} axisLine={false} tickLine={false} />
+                  <Tooltip cursor={{ fill: "rgba(0,0,0,0.04)" }} contentStyle={{ borderRadius: 12, border: "1px solid #e5e7eb", boxShadow: "0 4px 12px rgba(0,0,0,0.06)" }} />
+                  <Legend iconType="circle" iconSize={8} />
+                  <Bar dataKey="expiring" fill="#f59e0b" name="Certificates" radius={[4, 4, 0, 0]} maxBarSize={32} />
+                  <Bar dataKey="contracts" fill="#3b82f6" name="Contracts" radius={[4, 4, 0, 0]} maxBarSize={32} />
                 </BarChart>
               </ResponsiveContainer>
             )}
           </CardContent>
         </Card>
 
-        <Card className="border-0 neu rounded-2xl">
-          <CardHeader className="pb-3 border-b border-gray-200/60">
+        <Card className="rounded-xl border-border/70 shadow-sm">
+          <CardHeader className="pb-3 border-b border-border/60">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="h-8 w-8 rounded-lg neu-inset rounded-xl flex items-center justify-center">
+                <div className="h-8 w-8 rounded-lg bg-red-500/10 flex items-center justify-center">
                   <Icon name="alert-circle" className="text-red-500" size={16} />
                 </div>
-                <CardTitle className="text-sm font-semibold text-gray-800">Action Required</CardTitle>
+                <CardTitle className="font-serif text-base font-semibold text-foreground">Action Required</CardTitle>
               </div>
               {notifications.length > 0 && (
                 <Badge variant="outline" className="text-[10px] h-5 px-1.5 bg-red-50 text-red-600 border-red-200">{notifications.length}</Badge>
@@ -207,14 +215,14 @@ export default function Dashboard() {
           <CardContent className="pt-4 max-h-[280px] overflow-y-auto">
             <div className="space-y-3">
               {notifications.length === 0 ? (
-                <div className="flex items-center gap-3 p-3 rounded-xl neu-inset">
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-secondary/50">
                   <Icon name="check-circle" className="text-emerald-500 shrink-0" size={20} />
-                  <p className="text-sm font-medium text-gray-500">No urgent items</p>
+                  <p className="text-sm font-medium text-muted-foreground">No urgent items</p>
                 </div>
               ) : (
                 notifications.map((n) => (
                   <Link key={n.id} href={n.link} className="block">
-                    <div className="flex items-start gap-3 p-3 rounded-xl neu-sm hover:shadow-lg transition-all">
+                    <div className="flex items-start gap-3 p-3 rounded-xl border border-border/70 bg-white dark:bg-zinc-900 shadow-sm hover:shadow-md transition-all">
                       {n.type === "certificate_expiring" ? (
                         <Icon name="shield-alert" className="mt-0.5 shrink-0 text-amber-500" size={20} />
                       ) : (
@@ -222,14 +230,14 @@ export default function Dashboard() {
                       )}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <h4 className="text-sm font-medium text-gray-800">{n.title}</h4>
+                          <h4 className="text-sm font-medium text-foreground">{n.title}</h4>
                           <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0 border ${
-                            n.daysUntil === 0 || n.daysUntil <= 7 ? "border-red-200 text-red-600" : "border-gray-200 text-gray-500"
+                            n.daysUntil === 0 || n.daysUntil <= 7 ? "border-red-200 text-red-600" : "border-border text-muted-foreground"
                           }`}>
                             {n.daysUntil === 0 ? "OVERDUE" : `${n.daysUntil}d`}
                           </span>
                         </div>
-                        <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{n.description}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{n.description}</p>
                         <span className="text-xs font-medium text-red-500 mt-1.5 inline-block">View details →</span>
                       </div>
                     </div>
@@ -243,15 +251,15 @@ export default function Dashboard() {
 
       {/* Activity + Contracts by Status */}
       <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="border-0 neu rounded-2xl lg:col-span-2 flex flex-col">
-          <CardHeader className="pb-3 border-b border-gray-200/60">
+        <Card className="rounded-xl border-border/70 shadow-sm lg:col-span-2 flex flex-col">
+          <CardHeader className="pb-3 border-b border-border/60">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="h-8 w-8 rounded-lg neu-inset rounded-xl flex items-center justify-center">
+                <div className="h-8 w-8 rounded-lg bg-red-500/10 flex items-center justify-center">
                   <Icon name="activity" className="text-red-500" size={16} />
                 </div>
                 <div>
-                  <CardTitle className="text-sm font-semibold text-gray-800">Recent Activity</CardTitle>
+                  <CardTitle className="font-serif text-base font-semibold text-foreground">Recent Activity</CardTitle>
                   <CardDescription>Latest actions across the portal</CardDescription>
                 </div>
               </div>
@@ -271,15 +279,15 @@ export default function Dashboard() {
                 ))}
               </div>
             ) : activities && activities.length > 0 ? (
-              <div className="divide-y divide-gray-100">
+              <div className="divide-y divide-border/60">
                 {activities.slice(0, 8).map((activity) => (
-                  <div key={activity.id} className="p-4 hover:bg-white/50 transition-colors flex gap-4 group">
-                    <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full neu-inset">
+                  <div key={activity.id} className="p-4 hover:bg-muted/40 transition-colors flex gap-4 group">
+                    <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary/60">
                       {getActivityIcon(activity.type)}
                     </div>
                     <div className="flex-1 space-y-1 min-w-0">
-                      <p className="text-sm font-medium leading-snug text-gray-800">{activity.description}</p>
-                      <div className="flex items-center text-xs text-gray-400 gap-2">
+                      <p className="text-sm font-medium leading-snug text-foreground">{activity.description}</p>
+                      <div className="flex items-center text-xs text-muted-foreground gap-2">
                         <span>{format(new Date(activity.timestamp), "MMM d, h:mm a")}</span>
                         <span className="w-1 h-1 rounded-full bg-gray-300"></span>
                         <span className="capitalize">{activity.type}</span>
@@ -296,7 +304,7 @@ export default function Dashboard() {
                 ))}
               </div>
             ) : (
-              <div className="h-full flex flex-col items-center justify-center text-gray-400 p-6">
+              <div className="h-full flex flex-col items-center justify-center text-muted-foreground p-6">
                 <Icon name="activity" className="mb-4" size={48} />
                 <p>No recent activity found</p>
               </div>
@@ -304,13 +312,13 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className="border-0 neu rounded-2xl flex flex-col">
-          <CardHeader className="pb-3 border-b border-gray-200/60">
+        <Card className="rounded-xl border-border/70 shadow-sm flex flex-col">
+          <CardHeader className="pb-3 border-b border-border/60">
             <div className="flex items-center gap-2.5">
-              <div className="h-8 w-8 rounded-lg neu-inset rounded-xl flex items-center justify-center">
+              <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
                 <Icon name="pie-chart" className="text-blue-500" size={16} />
               </div>
-              <CardTitle className="text-sm font-semibold text-gray-800">Contracts by Status</CardTitle>
+              <CardTitle className="font-serif text-base font-semibold text-foreground">Contracts by Status</CardTitle>
             </div>
           </CardHeader>
           <CardContent className="pt-4 flex-1">
@@ -326,17 +334,17 @@ export default function Dashboard() {
                   <div className="flex items-center gap-4 mb-5">
                     <ResponsiveContainer width="50%" height={130}>
                       <RePieChart>
-                        <Pie data={contractStatusData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={55} innerRadius={30}>
+                        <Pie data={contractStatusData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={55} innerRadius={30} paddingAngle={3}>
                           {contractStatusData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                         </Pie>
-                        <Tooltip />
+                        <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #e5e7eb", boxShadow: "0 4px 12px rgba(0,0,0,0.06)" }} />
                       </RePieChart>
                     </ResponsiveContainer>
                     <div className="space-y-2 text-sm">
                       {contractStatusData.map(d => (
                         <div key={d.name} className="flex items-center gap-2.5">
                           <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: d.color }} />
-                          <span className="text-gray-500">{d.name}: <strong className="text-gray-800">{d.value}</strong></span>
+                          <span className="text-muted-foreground">{d.name}: <strong className="text-foreground">{d.value}</strong></span>
                         </div>
                       ))}
                     </div>
@@ -351,10 +359,10 @@ export default function Dashboard() {
                   ].map(s => (
                     <div key={s.label}>
                       <div className="flex justify-between items-end mb-1.5">
-                        <span className="text-sm font-medium text-gray-700">{s.label}</span>
-                        <span className="text-sm tabular-nums text-gray-400">{s.count}</span>
+                        <span className="text-sm font-medium text-foreground/80">{s.label}</span>
+                        <span className="text-sm tabular-nums text-muted-foreground">{s.count}</span>
                       </div>
-                      <Progress value={(s.count / Math.max(contractsSummary.total, 1)) * 100} className={`h-2 ${s.color}`} />
+                      <Progress value={(s.count / Math.max(contractsSummary.total, 1)) * 100} className={`h-1.5 rounded-full ${s.color}`} />
                     </div>
                   ))}
                 </div>

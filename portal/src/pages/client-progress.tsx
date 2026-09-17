@@ -43,7 +43,7 @@ export default function ClientProgress() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
-        <Card className="w-full max-w-2xl neu rounded-2xl">
+        <Card className="w-full max-w-2xl neu rounded-lg">
           <CardContent className="p-8 space-y-4">
             <Skeleton className="h-8 w-48" />
             <Skeleton className="h-4 w-32" />
@@ -58,7 +58,7 @@ export default function ClientProgress() {
   if (error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md text-center neu rounded-2xl">
+        <Card className="w-full max-w-md text-center neu rounded-lg">
           <CardContent className="p-8">
             <div className="text-5xl mb-4">🔒</div>
             <h2 className="text-xl font-bold mb-2">Access Denied</h2>
@@ -72,7 +72,7 @@ export default function ClientProgress() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       <div className="max-w-3xl mx-auto p-4 sm:p-8">
-        <Card className="overflow-hidden border-0 shadow-lg neu rounded-2xl">
+        <Card className="overflow-hidden border-0 shadow-lg neu rounded-lg">
           <div className="h-2 bg-gradient-to-r from-blue-500 via-emerald-500 to-amber-500" />
           <CardHeader className="border-b bg-white pb-6">
             <div className="flex items-center justify-between">
@@ -83,7 +83,7 @@ export default function ClientProgress() {
                   <p className="text-muted-foreground mt-1">Client: {data.clientName}</p>
                 )}
               </div>
-              <span className={`text-xs font-medium px-3 py-1 rounded-full ${STATUS_COLORS[data?.status] || "bg-gray-100"}`}>
+              <span className={`text-xs font-medium px-3 py-1 rounded-full ${STATUS_COLORS[data?.status] || "bg-secondary"}`}>
                 {STATUS_LABELS[data?.status] || data?.status}
               </span>
             </div>

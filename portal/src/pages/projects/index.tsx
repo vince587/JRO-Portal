@@ -118,7 +118,7 @@ export default function ProjectsList() {
   const getStatusBadge = (status: ProjectStatus) => {
     switch (status) {
       case 'planning':
-        return <Badge variant="outline" className="bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-900/20 dark:text-slate-400 dark:border-slate-900/50">Planning</Badge>;
+        return <Badge variant="outline" className="bg-muted/60 text-foreground border-border dark:bg-slate-900/20 dark:text-muted-foreground/80 dark:border-slate-900/50">Planning</Badge>;
       case 'active':
         return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-900/50">Active</Badge>;
       case 'on_hold':
@@ -134,11 +134,11 @@ export default function ProjectsList() {
 
   const getPriorityColor = (priority?: ProjectPriority) => {
     switch (priority) {
-      case 'low': return "text-slate-500 bg-slate-100 dark:bg-slate-800";
+      case 'low': return "text-muted-foreground bg-slate-100 dark:bg-slate-800";
       case 'medium': return "text-blue-500 bg-blue-100 dark:bg-blue-900/40";
       case 'high': return "text-amber-500 bg-amber-100 dark:bg-amber-900/40";
       case 'critical': return "text-red-500 bg-red-100 dark:bg-red-900/40";
-      default: return "text-slate-500 bg-slate-100 dark:bg-slate-800";
+      default: return "text-muted-foreground bg-slate-100 dark:bg-slate-800";
     }
   };
 
@@ -146,16 +146,12 @@ export default function ProjectsList() {
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-            <Icon name="briefcase" className="text-indigo-500" size={28} />
-            Projects
-          </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-muted-foreground">
             Manage operational deployments and deliverables.
           </p>
         </div>
-        {user?.roles?.some(r => ["admin", "ADMIN", "IT", "manager"].includes(r)) || ["admin", "ADMIN", "IT", "manager"].includes(user?.role ?? "") ? (
-          <Button asChild>
+        {(user?.canAccessProjects && user?.canAccessJmcs) || user?.roles?.some(r => ["admin", "ADMIN", "IT"].includes(r)) || ["admin", "ADMIN", "IT"].includes(user?.role ?? "") ? (
+          <Button asChild variant="success">
             <Link href="/projects/new" className="flex items-center">
               <Icon name="plus" className="mr-2" size={16} />
               New Project
@@ -216,7 +212,7 @@ export default function ProjectsList() {
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {Array(6).fill(0).map((_, i) => (
-            <Card key={i} className="h-64 neu rounded-2xl">
+            <Card key={i} className="h-64 neu rounded-lg">
               <CardContent className="p-6 h-full flex flex-col justify-between">
                 <div>
                   <div className="flex justify-between items-start mb-4">
@@ -238,7 +234,7 @@ export default function ProjectsList() {
           ))}
         </div>
       ) : filteredProjects?.length === 0 ? (
-        <Card className="neu rounded-2xl">
+        <Card className="neu rounded-lg">
           <CardContent className="h-64 flex flex-col items-center justify-center text-center">
             <Icon name="briefcase" className="text-muted-foreground/30 mb-4" size={48} />
             <p className="text-lg font-medium">No projects found</p>
@@ -273,7 +269,7 @@ export default function ProjectsList() {
           )}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProjects?.map(project => (
-              <Card key={project.id} className="flex flex-col hover:border-primary/50 transition-colors group relative overflow-hidden neu rounded-2xl">
+              <Card key={project.id} className="flex flex-col hover:border-primary/50 transition-colors group relative overflow-hidden neu rounded-lg">
                 <div className="absolute top-3 left-3 z-10 bg-background/80 backdrop-blur-sm rounded p-0.5">
                   <Checkbox
                     checked={selectedIds.has(project.id)}

@@ -53,7 +53,7 @@ import { UploadProgressOverlay } from "@/components/upload-progress";
 
 const DEPARTMENTS = ["SIS", "JMCS", "Both"] as const;
 
-const ALL_ROLES = ["staff", "manager", "IT", "ADMIN"] as const;
+const ALL_ROLES = ["staff", "officer", "IT", "ADMIN"] as const;
 
 type UserFormData = {
   username: string;
@@ -71,6 +71,7 @@ type UserFormData = {
   canManageCertificates: boolean;
   canAccessProjects: boolean;
   canAccessAdmin: boolean;
+  canAccessDevelopers: boolean;
 };
 
 function guessGender(name: string): "male" | "female" {
@@ -221,6 +222,7 @@ const EMPTY_USER_FORM: UserFormData = {
   canManageCertificates: false,
   canAccessProjects: false,
   canAccessAdmin: false,
+  canAccessDevelopers: false,
 };
 
 const PermissionSection = ({
@@ -291,6 +293,13 @@ const PermissionSection = ({
           <p className="text-xs text-muted-foreground">Can access the Company Admin page</p>
         </div>
         <Switch checked={data.canAccessAdmin} onCheckedChange={v => onChange({ ...data, canAccessAdmin: v })} />
+      </div>
+      <div className="flex items-center justify-between rounded-lg border p-3 bg-background">
+        <div>
+          <Label className="text-sm font-medium">Developers</Label>
+          <p className="text-xs text-muted-foreground">Can access the Developers page</p>
+        </div>
+        <Switch checked={data.canAccessDevelopers} onCheckedChange={v => onChange({ ...data, canAccessDevelopers: v })} />
       </div>
     </div>
   </div>
@@ -528,8 +537,8 @@ export default function Developers() {
       case 'ADMIN': return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 flex items-center gap-1 dark:bg-red-900/20 dark:text-red-400 dark:border-red-900/50"><Icon name="shield-alert" size={12} /> ADMIN</Badge>;
       case 'IT': return <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 flex items-center gap-1 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-900/50"><Icon name="code" size={12} /> IT</Badge>;
       case 'admin': return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 flex items-center gap-1 dark:bg-red-900/20 dark:text-red-400 dark:border-red-900/50"><Icon name="shield-alert" size={12} /> Admin</Badge>;
-      case 'manager': return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 flex items-center gap-1 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-900/50"><Icon name="shield" size={12} /> Officer</Badge>;
-      case 'staff': return <Badge variant="outline" className="bg-slate-50 text-slate-700 border-slate-200 flex items-center gap-1 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700"><Icon name="user" size={12} /> Staff</Badge>;
+      case 'officer': return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 flex items-center gap-1 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-900/50"><Icon name="shield" size={12} /> Officer</Badge>;
+      case 'staff': return <Badge variant="outline" className="bg-muted/60 text-foreground border-border flex items-center gap-1 dark:bg-slate-800 dark:text-muted-foreground/60 dark:border-slate-700"><Icon name="user" size={12} /> Staff</Badge>;
       default: return <Badge variant="outline">{role}</Badge>;
     }
   };
@@ -543,7 +552,7 @@ export default function Developers() {
     return name.split(" ").map((n) => n[0]).join("").toUpperCase().substring(0, 2);
   };
 
-  if (currentUser && !(["IT", "ADMIN", "admin"].includes(currentUser.role) || currentUser.roles?.some(r => ["IT", "ADMIN", "admin"].includes(r)))) {
+  if (currentUser && !(["IT", "ADMIN", "admin"].includes(currentUser.role) || currentUser.roles?.some(r => ["IT", "ADMIN", "admin"].includes(r)) || !!currentUser.canAccessDevelopers)) {
     return (
       <div className="flex flex-col items-center justify-center h-[50vh] text-center">
         <Icon name="shield-alert" className="text-destructive mb-4" size={48} />
@@ -557,11 +566,7 @@ export default function Developers() {
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-            <Icon name="code" className="text-primary" size={28} />
-            Developers
-          </h1>
-          <p className="text-muted-foreground mt-1">Manage system access, user accounts, and employee permissions.</p>
+          <p className="text-muted-foreground">Manage system access, user accounts, and employee permissions.</p>
         </div>
         <Dialog open={addDialogOpen} onOpenChange={(open) => {
           setAddDialogOpen(open);
@@ -597,7 +602,7 @@ export default function Developers() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
-        <Card className="md:col-span-2 neu rounded-2xl">
+        <Card className="md:col-span-2 neu rounded-lg">
           <CardContent className="p-0">
             <div className="p-4 border-b bg-muted/20 neu-inset rounded-xl">
               <div className="flex flex-col sm:flex-row gap-3">
@@ -612,7 +617,7 @@ export default function Developers() {
                     <SelectItem value="ADMIN">ADMIN</SelectItem>
                     <SelectItem value="IT">IT</SelectItem>
                     <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="manager">Officer</SelectItem>
+                    <SelectItem value="officer">Officer</SelectItem>
                     <SelectItem value="staff">Staff</SelectItem>
                   </SelectContent>
                 </Select>
@@ -676,7 +681,8 @@ export default function Developers() {
                           {user.canManageCertificates && <Badge variant="outline" className="text-[10px] h-5 bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-900/20 dark:text-violet-400">MCert</Badge>}
                           {user.canAccessProjects && <Badge variant="outline" className="text-[10px] h-5 bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-900/20 dark:text-indigo-400">Proj</Badge>}
                           {user.canAccessAdmin && <Badge variant="outline" className="text-[10px] h-5 bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-400">Admin</Badge>}
-                          {!user.canAccessSis && !user.canAccessJmcs && !user.canEditCalendar && !user.canEditTrainingProposal && !user.canManageContracts && !user.canManageCertificates && !user.canAccessProjects && !user.canAccessAdmin && (
+                          {user.canAccessDevelopers && <Badge variant="outline" className="text-[10px] h-5 bg-slate-700 text-white border-slate-700 dark:bg-slate-300 dark:text-slate-800 dark:border-slate-300">Dev</Badge>}
+                          {!user.canAccessSis && !user.canAccessJmcs && !user.canEditCalendar && !user.canEditTrainingProposal && !user.canManageContracts && !user.canManageCertificates && !user.canAccessProjects && !user.canAccessAdmin && !user.canAccessDevelopers && (
                             <span className="text-xs text-muted-foreground">None</span>
                           )}
                         </div>
@@ -714,6 +720,7 @@ export default function Developers() {
                                 canManageCertificates: user.canManageCertificates ?? false,
                                 canAccessProjects: user.canAccessProjects ?? false,
                                 canAccessAdmin: user.canAccessAdmin ?? false,
+                                canAccessDevelopers: user.canAccessDevelopers ?? false,
                               });
                               setPhotoUrl(null);
                               setEditDialogOpen(true);
@@ -740,7 +747,7 @@ export default function Developers() {
         </Card>
 
         <div className="space-y-6">
-          <Card className="neu rounded-2xl">
+          <Card className="neu rounded-lg">
             <CardHeader className="pb-3 border-b">
               <CardTitle className="text-base font-semibold">Security Policies</CardTitle>
             </CardHeader>
@@ -760,7 +767,7 @@ export default function Developers() {
               <Button variant="outline" className="w-full mt-2" asChild><a href="/activity">Review Activity Log</a></Button>
             </CardContent>
           </Card>
-          <Card className="bg-primary text-primary-foreground border-none neu rounded-2xl">
+          <Card className="bg-primary text-primary-foreground border-none neu rounded-lg">
             <CardHeader className="pb-2">
               <CardTitle className="text-base font-semibold flex items-center gap-2"><Icon name="shield-alert" size={16} /> IT Notice</CardTitle>
             </CardHeader>
@@ -808,6 +815,7 @@ export default function Developers() {
                   canManageCertificates: formData.canManageCertificates,
                   canAccessProjects: formData.canAccessProjects,
                   canAccessAdmin: formData.canAccessAdmin,
+                  canAccessDevelopers: formData.canAccessDevelopers,
                 };
                 if (photoUrl) {
                   updateData.photoUrl = photoUrl;

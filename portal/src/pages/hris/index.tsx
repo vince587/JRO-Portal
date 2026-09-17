@@ -73,7 +73,7 @@ const STATUS_OPTIONS = ["Regular", "Probationary", "Contractual", "Part-Time", "
 
 export default function HrisList() {
   const { data: currentUser } = useGetMe();
-  const isAdmin = currentUser && (["ADMIN", "admin"].includes(currentUser.role) || currentUser.roles?.some((r: string) => ["ADMIN", "admin"].includes(r)));
+  const isAdmin = currentUser && (["ADMIN", "admin"].includes(currentUser.role) || currentUser.roles?.some((r: string) => ["ADMIN", "admin"].includes(r)) || !!currentUser.canAccessAdmin);
   const { data: employees, isLoading, error } = useEmployees({ enabled: isAdmin });
   const { data: myProfile, isLoading: myProfileLoading, error: myProfileError } = useMyEmployeeProfile();
   const { data: stats } = useHrisStats();
@@ -319,18 +319,14 @@ export default function HrisList() {
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-            <Icon name="building-2" className="text-primary" size={28} />
-            {showFullHRIS ? "HRIS Management" : "My Employee Profile"}
-          </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-muted-foreground">
             {showFullHRIS
               ? "Manage employee records, HR documents, and clerical tasks."
               : "View and update your personal employee information."}
           </p>
         </div>
         {showFullHRIS && (
-          <Button onClick={handleOpenAdd}>
+          <Button onClick={handleOpenAdd} variant="success">
             <Icon name="plus" className="mr-2" size={16} /> Add Employee
           </Button>
         )}
@@ -400,7 +396,7 @@ export default function HrisList() {
             </Select>
           </div>
 
-          <Card className="neu rounded-2xl">
+          <Card className="neu rounded-lg">
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <Table>
@@ -507,7 +503,7 @@ export default function HrisList() {
         {showDocumentsTab && (
           <TabsContent value="documents">
             {showFullHRIS ? (
-              <Card className="neu rounded-2xl">
+              <Card className="neu rounded-lg">
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Icon name="upload" className="text-muted-foreground" size={20} />
@@ -553,7 +549,7 @@ export default function HrisList() {
               </Card>
             ) : (
               // Non-admin view: show documents associated with current user only
-              <Card className="neu rounded-2xl">
+              <Card className="neu rounded-lg">
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Icon name="upload" className="text-muted-foreground" size={20} />
@@ -588,7 +584,7 @@ export default function HrisList() {
 
         {/* Leave requests tab content */}
         <TabsContent value="leaves" className="space-y-4">
-          <Card className="neu rounded-2xl">
+          <Card className="neu rounded-lg">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <Icon name="calendar-days" className="text-muted-foreground" size={20} />
@@ -723,15 +719,15 @@ export default function HrisList() {
             {stats ? (
               <>
                 <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-                  <Card className="neu rounded-2xl"><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Total Employees</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold">{stats.total}</p></CardContent></Card>
-                  <Card className="neu rounded-2xl border-emerald-200 dark:border-emerald-900/50"><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-emerald-600 dark:text-emerald-400">Regular</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{stats.regular}</p></CardContent></Card>
-                  <Card className="neu rounded-2xl border-amber-200 dark:border-amber-900/50"><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-amber-600 dark:text-amber-400">Probationary</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold text-amber-600 dark:text-amber-400">{stats.probationary}</p></CardContent></Card>
-                  <Card className="neu rounded-2xl border-blue-200 dark:border-blue-900/50"><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-blue-600 dark:text-blue-400">Contractual</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold text-blue-600 dark:text-blue-400">{stats.contractual}</p></CardContent></Card>
-                  <Card className="neu rounded-2xl"><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Part-Time</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold">{stats.partTime}</p></CardContent></Card>
-                  <Card className="neu rounded-2xl"><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Intern</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold">{stats.intern}</p></CardContent></Card>
+                  <Card className="neu rounded-lg"><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Total Employees</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold">{stats.total}</p></CardContent></Card>
+                  <Card className="neu rounded-lg border-emerald-200 dark:border-emerald-900/50"><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-emerald-600 dark:text-emerald-400">Regular</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{stats.regular}</p></CardContent></Card>
+                  <Card className="neu rounded-lg border-amber-200 dark:border-amber-900/50"><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-amber-600 dark:text-amber-400">Probationary</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold text-amber-600 dark:text-amber-400">{stats.probationary}</p></CardContent></Card>
+                  <Card className="neu rounded-lg border-blue-200 dark:border-blue-900/50"><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-blue-600 dark:text-blue-400">Contractual</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold text-blue-600 dark:text-blue-400">{stats.contractual}</p></CardContent></Card>
+                  <Card className="neu rounded-lg"><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Part-Time</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold">{stats.partTime}</p></CardContent></Card>
+                  <Card className="neu rounded-lg"><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Intern</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold">{stats.intern}</p></CardContent></Card>
                 </div>
 
-                <Card className="mt-6 neu rounded-2xl">
+                <Card className="mt-6 neu rounded-lg">
                   <CardHeader>
                     <CardTitle className="text-base">Distribution</CardTitle>
                     <CardDescription>Employment status breakdown</CardDescription>
@@ -744,7 +740,7 @@ export default function HrisList() {
                           { label: "Probationary", value: stats.probationary, color: "bg-amber-500" },
                           { label: "Contractual", value: stats.contractual, color: "bg-blue-500" },
                           { label: "Part-Time", value: stats.partTime, color: "bg-violet-500" },
-                          { label: "Intern", value: stats.intern, color: "bg-slate-500" },
+                          { label: "Intern", value: stats.intern, color: "bg-muted/600" },
                         ] as const).map(({ label, value, color }) => (
                           <div key={label} className="space-y-1">
                             <div className="flex justify-between text-sm">
@@ -765,7 +761,7 @@ export default function HrisList() {
               </>
             ) : (
               <div className="grid gap-6 md:grid-cols-3">
-                {Array(3).fill(0).map((_, i) => <Card key={i} className="neu rounded-2xl"><CardHeader className="pb-2"><Skeleton className="h-4 w-24" /></CardHeader><CardContent><Skeleton className="h-8 w-16" /></CardContent></Card>)}
+                {Array(3).fill(0).map((_, i) => <Card key={i} className="neu rounded-lg"><CardHeader className="pb-2"><Skeleton className="h-4 w-24" /></CardHeader><CardContent><Skeleton className="h-8 w-16" /></CardContent></Card>)}
               </div>
             )}
           </TabsContent>
@@ -773,7 +769,7 @@ export default function HrisList() {
 
         {/* Quick Actions tab - show relevant actions based on role */}
         <TabsContent value="overview">
-          <Card className="mt-6 neu rounded-2xl">
+          <Card className="mt-6 neu rounded-lg">
             <CardHeader>
               <CardTitle className="text-base">Quick Actions</CardTitle>
             </CardHeader>

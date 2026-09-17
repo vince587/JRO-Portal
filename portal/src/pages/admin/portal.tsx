@@ -270,7 +270,7 @@ function SpreadsheetGrid({
       </div>
       <div className="ss-grid border border-gray-300 rounded-md overflow-auto" style={{ maxHeight: "min(70vh, 640px)" }}>
         <table className="w-full border-collapse text-sm">
-          <thead className="sticky top-0 z-10 bg-gray-100">
+          <thead className="sticky top-0 z-10 bg-secondary">
             <tr>
               <th className="ss-th w-10 text-center">#</th>
               {columns.map(c => {
@@ -522,7 +522,7 @@ function TabCalendar() {
     })();
   }, []);
   return (
-    <Card className="neu rounded-2xl">
+    <Card className="neu rounded-lg">
       <CardHeader><CardTitle className="text-base">Upcoming Deadlines & Expiries</CardTitle><CardDescription>All compliance events sorted by urgency.</CardDescription></CardHeader>
       <CardContent className="p-0">
         {loading ? (

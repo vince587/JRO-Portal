@@ -96,7 +96,7 @@ export default function InstallRequired() {
   return (
     <div
       className="relative min-h-screen w-full overflow-hidden"
-      style={{ background: "linear-gradient(135deg, #0a1628 0%, #0a1f44 55%, #122a5e 100%)" }}
+      style={{ background: "linear-gradient(135deg, #000f2e 0%, #001B48 55%, #12336e 100%)" }}
     >
       {/* Blurred, dimmed backdrop so this reads as a required notice */}
       <div
@@ -107,12 +107,12 @@ export default function InstallRequired() {
       <div className="relative z-10 min-h-screen w-full flex items-center justify-center p-6">
         <div
           className="w-full max-w-md rounded-2xl overflow-hidden shadow-2xl neu"
-          style={{ backgroundColor: "#0a1f44", minHeight: "460px" }}
+          style={{ backgroundColor: "#001B48", minHeight: "460px" }}
         >
           <div className="flex flex-col items-center justify-center gap-5 px-10 py-14 text-center">
             <div
               className="w-16 h-16 rounded-2xl flex items-center justify-center"
-              style={{ backgroundColor: "#c0152b" }}
+              style={{ backgroundColor: "hsl(var(--primary))" }}
             >
               {platformIcon(platform)}
             </div>
@@ -152,7 +152,7 @@ export default function InstallRequired() {
                   href={download.url}
                   download
                   className="w-full py-3 rounded-lg text-sm font-bold text-white transition-all text-center"
-                  style={{ backgroundColor: "#c0152b", boxShadow: "0 4px 16px rgba(192,21,43,0.35)" }}
+                  style={{ backgroundColor: "hsl(var(--primary))", boxShadow: "0 4px 16px rgba(37,99,235,0.35)" }}
                 >
                   Download for {platformLabel(platform)}
                   {download.manifest && (

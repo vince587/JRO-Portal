@@ -311,3 +311,45 @@ export function useUpdateOfficialHours() {
     },
   });
 }
+
+export function useAdminUpsertAttendance() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: { userId: string; date: string; clockIn?: string; clockOut?: string }) => {
+      const res = await fetch("/api/admin/attendance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error || "Failed to save attendance");
+      }
+      return res.json() as Promise<AttendanceRecord>;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ATTENDANCE_TODAY_KEY });
+      qc.invalidateQueries({ queryKey: ATTENDANCE_LIST_KEY });
+      qc.invalidateQueries({ queryKey: ATTENDANCE_REPORT_KEY });
+    },
+  });
+}
+
+export function useAdminDeleteAttendance() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/admin/attendance/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error || "Failed to delete attendance");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ATTENDANCE_TODAY_KEY });
+      qc.invalidateQueries({ queryKey: ATTENDANCE_LIST_KEY });
+      qc.invalidateQueries({ queryKey: ATTENDANCE_REPORT_KEY });
+    },
+  });
+}

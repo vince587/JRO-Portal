@@ -58,6 +58,7 @@ export interface UserDoc {
   canManageCertificates: boolean;
   canAccessProjects: boolean;
   canAccessAdmin: boolean;
+  canAccessDevelopers?: boolean;
   photoUrl: string | null;
   mustChangePassword?: boolean;
   createdAt: string;
@@ -80,6 +81,8 @@ export interface ContractDoc {
   createdById: string | null;
   createdByName: string | null;
   createdByPhotoUrl: string | null;
+  documentName: string | null;
+  documentStoredAs: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -87,6 +90,7 @@ export interface ContractDoc {
 export interface CertificateDoc {
   id?: string;
   title: string;
+  company: string | null;
   recipientName: string;
   recipientEmail: string | null;
   issuedBy: string;
@@ -206,6 +210,7 @@ export interface LeadDoc {
   id?: string;
   companyName: string;
   contactPerson: string;
+  position: string | null;
   email: string | null;
   phone: string | null;
   serviceInterest: string | null;
@@ -213,6 +218,8 @@ export interface LeadDoc {
   notes: string | null;
   type: string | null;
   createdById: string;
+  createdByName: string | null;
+  createdByPhotoUrl: string | null;
   createdAt: string;
   updatedAt: string;
 }

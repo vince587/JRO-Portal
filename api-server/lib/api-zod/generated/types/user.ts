@@ -26,6 +26,7 @@ export interface User {
   canManageCertificates?: boolean;
   canAccessProjects?: boolean;
   canAccessAdmin?: boolean;
+  canAccessDevelopers?: boolean;
   /** @nullable */
   photoUrl?: string | null;
   createdAt: string;

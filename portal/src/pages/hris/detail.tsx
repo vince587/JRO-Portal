@@ -120,7 +120,7 @@ export default function HrisEmployeeDetail() {
     );
   }
 
-  const isAdmin = currentUser && (["ADMIN", "admin"].includes(currentUser.role) || currentUser.roles?.some((r: string) => ["ADMIN", "admin"].includes(r)));
+  const isAdmin = currentUser && (["ADMIN", "admin"].includes(currentUser.role) || currentUser.roles?.some((r: string) => ["ADMIN", "admin"].includes(r)) || !!currentUser.canAccessAdmin);
   const userId = currentUser.id?.toString() || "";
 
   // For non-admin users, only allow access to their own employee record
@@ -334,7 +334,7 @@ export default function HrisEmployeeDetail() {
               {isEditing ? (
                 <>
                   <Button variant="outline" onClick={() => { setIsEditing(false); setFormData(null); }}>Cancel</Button>
-                  <Button onClick={handleSave} disabled={updateMutation.isPending}>
+                  <Button onClick={handleSave} disabled={updateMutation.isPending} variant="success">
                     {updateMutation.isPending ? "Saving..." : "Save Changes"}
                   </Button>
                 </>
@@ -384,7 +384,7 @@ export default function HrisEmployeeDetail() {
         <TabsContent value="profile" className="space-y-4">
           <div className="grid md:grid-cols-2 gap-6">
             <div className="space-y-6">
-              <Card className="neu rounded-2xl">
+              <Card className="neu rounded-lg">
                 <CardHeader className="pb-3 border-b">
                   <CardTitle className="text-base flex items-center gap-2">
                     <Icon name="user" className="text-muted-foreground" size={16} />
@@ -415,7 +415,7 @@ export default function HrisEmployeeDetail() {
                 </CardContent>
               </Card>
 
-              <Card className="neu rounded-2xl">
+              <Card className="neu rounded-lg">
                 <CardHeader className="pb-3 border-b">
                   <CardTitle className="text-base flex items-center gap-2">
                     <Icon name="heart" className="text-muted-foreground" size={16} />
@@ -434,7 +434,7 @@ export default function HrisEmployeeDetail() {
             </div>
 
             <div className="space-y-6">
-              <Card className="neu rounded-2xl">
+              <Card className="neu rounded-lg">
                 <CardHeader className="pb-3 border-b">
                   <CardTitle className="text-base flex items-center gap-2">
                     <Icon name="user" className="text-muted-foreground" size={16} />
@@ -449,7 +449,7 @@ export default function HrisEmployeeDetail() {
                 </CardContent>
               </Card>
 
-              <Card className="neu rounded-2xl">
+              <Card className="neu rounded-lg">
                 <CardHeader className="pb-3 border-b">
                   <CardTitle className="text-base flex items-center gap-2">
                     <Icon name="file-text" className="text-muted-foreground" size={16} />
@@ -530,7 +530,7 @@ export default function HrisEmployeeDetail() {
 
         {/* Leave Tab */}
         <TabsContent value="leave" className="space-y-4">
-          <Card className="neu rounded-2xl">
+          <Card className="neu rounded-lg">
             <CardHeader className="pb-3 border-b flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="text-lg flex items-center gap-2">
@@ -571,7 +571,7 @@ export default function HrisEmployeeDetail() {
             </CardContent>
           </Card>
 
-          <Card className="neu rounded-2xl">
+          <Card className="neu rounded-lg">
             <CardHeader className="pb-3 border-b">
               <CardTitle className="text-base flex items-center gap-2">
                 <Icon name="calendar-days" className="text-muted-foreground" size={16} />
@@ -635,7 +635,7 @@ export default function HrisEmployeeDetail() {
 
         {/* Benefits Tab */}
         <TabsContent value="benefits" className="space-y-4">
-          <Card className="neu rounded-2xl">
+          <Card className="neu rounded-lg">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <Icon name="heart" className="text-muted-foreground" size={20} />
@@ -655,7 +655,7 @@ export default function HrisEmployeeDetail() {
 
         {/* Tax Information Tab */}
         <TabsContent value="tax" className="space-y-4">
-          <Card className="neu rounded-2xl">
+          <Card className="neu rounded-lg">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <Icon name="hash" className="text-muted-foreground" size={20} />

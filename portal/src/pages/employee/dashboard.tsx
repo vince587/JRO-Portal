@@ -136,7 +136,7 @@ export default function EmployeeDashboard() {
           <Skeleton className="h-48 rounded-lg" />
         </div>
       ) : !profile ? (
-        <Card className="neu rounded-2xl">
+        <Card className="neu rounded-lg">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Icon name="shield-alert" className="text-muted-foreground mb-4" size={48} />
             <h2 className="text-xl font-bold">No Employee Record Found</h2>
@@ -150,7 +150,7 @@ export default function EmployeeDashboard() {
         <TimeClockCard />
         <div className="grid md:grid-cols-3 gap-6">
           <div className="md:col-span-2 space-y-6">
-            <Card className="neu rounded-2xl">
+            <Card className="neu rounded-lg">
               <CardHeader className="pb-3 border-b">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Icon name="user" className="text-muted-foreground" size={16} />
@@ -204,7 +204,7 @@ export default function EmployeeDashboard() {
               </CardContent>
             </Card>
 
-            <Card className="neu rounded-2xl">
+            <Card className="neu rounded-lg">
               <CardHeader className="pb-3 border-b">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Icon name="heart" className="text-muted-foreground" size={16} />
@@ -233,7 +233,7 @@ export default function EmployeeDashboard() {
               </CardContent>
             </Card>
 
-            <Card className="neu rounded-2xl">
+            <Card className="neu rounded-lg">
               <CardHeader className="pb-3 border-b flex flex-row items-center justify-between">
                 <div>
                   <CardTitle className="text-base flex items-center gap-2">
@@ -311,7 +311,7 @@ export default function EmployeeDashboard() {
           </div>
 
           <div className="space-y-6">
-            <Card className="neu rounded-2xl">
+            <Card className="neu rounded-lg">
               <CardHeader className="pb-3 border-b">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Icon name="clock" className="text-muted-foreground" size={16} />
@@ -343,7 +343,7 @@ export default function EmployeeDashboard() {
               </CardContent>
             </Card>
 
-            <Card className="neu rounded-2xl">
+            <Card className="neu rounded-lg">
               <CardHeader className="pb-3 border-b">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Icon name="file-text" className="text-muted-foreground" size={16} />

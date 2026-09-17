@@ -5,31 +5,27 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const neuBase =
-  "rounded-xl bg-[var(--neu-bg)] text-[#3a4456] border border-[#d3d9e3] " +
-  "shadow-[6px_6px_12px_var(--neu-shadow-dark),-6px_-6px_12px_var(--neu-shadow-light)] " +
-  "hover:shadow-[8px_8px_16px_var(--neu-shadow-dark),-8px_-8px_16px_var(--neu-shadow-light)] " +
-  "active:shadow-[inset_4px_4px_8px_var(--neu-shadow-dark),inset_-4px_-4px_8px_var(--neu-shadow-light)] active:bg-[linear-gradient(180deg,hsl(var(--accent)/0.35),hsl(var(--accent)/0.15))]"
+  "rounded-md bg-white text-[#3a4456] border border-[#e3ddd3] " +
+  "hover:bg-muted/60 hover:border-[#d6cfc2] " +
+  "active:bg-secondary"
 
 const buttonVariants = cva(
   "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        // Neumorphism: soft extruded look on a light, low-contrast surface.
         neu: neuBase,
         default:
-           // @replit: neumorphism + primary accent text
-           neuBase + " text-primary font-semibold",
+          "bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/85 border border-transparent",
         destructive:
-          "bg-destructive text-destructive-foreground shadow-sm border-destructive-border active:bg-[linear-gradient(180deg,hsl(var(--destructive)),hsl(var(--destructive)/0.8))] active:shadow-inner",
+          "bg-destructive text-destructive-foreground border-destructive-border hover:bg-destructive/90 active:bg-destructive/85",
+        success:
+          "bg-success text-success-foreground border border-transparent hover:bg-success/90 active:bg-success/85",
         outline:
-          // Neumorphism outline button (inherits current text color).
           neuBase,
         secondary:
-          // @replit neumorphism secondary.
-          neuBase + " text-secondary-foreground",
-        // @replit no hover, transparent border
-        ghost: "border border-transparent hover:bg-accent hover:text-accent-foreground active:bg-[linear-gradient(180deg,hsl(var(--accent)),hsl(var(--accent)/0.85))]",
+          "bg-secondary text-secondary-foreground border border-transparent hover:bg-secondary/80 active:bg-secondary/70",
+        ghost: "border border-transparent hover:bg-accent hover:text-accent-foreground active:bg-accent/80",
         link: "text-primary underline-offset-4 hover:underline active:text-primary/80",
       },
       size: {

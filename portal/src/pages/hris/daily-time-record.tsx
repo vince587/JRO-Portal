@@ -12,19 +12,36 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useTodayAttendance, useAttendance, usePayrollPeriods, useCreatePayrollPeriod, useDeletePayrollPeriod, useOfficialHours, useUpdateOfficialHours } from "@/lib/hooks/use-attendance";
+import { useTodayAttendance, useAttendance, usePayrollPeriods, useCreatePayrollPeriod, useDeletePayrollPeriod, useOfficialHours } from "@/lib/hooks/use-attendance";
 import { useEmployee, useEmployees, useMyEmployeeProfile } from "@/lib/hooks/use-hris";
-import { useGetMe } from "@workspace/api-client-react";
+import { useGetMe, useListUsers } from "@workspace/api-client-react";
 import type { Employee } from "@/lib/hooks/use-hris";
-
-const companyLogos: Record<string, string> = {
-  "JMCS": "/JMCS LOGO.png",
-  "SIS Certification and Inspection Philippines OPC": "/SIS LOGO.png",
-};
 
 const controlNumbers: Record<string, string> = {
   "JMCS": "JMCS-DC-03",
   "SIS Certification and Inspection Philippines OPC": "SISOPC-DC-03",
+};
+
+const PH_HOLIDAYS: Record<string, string> = {
+  "2026-01-01": "New Year's Day",
+  "2026-02-17": "Chinese New Year",
+  "2026-02-25": "EDSA Revolution Anniversary",
+  "2026-04-02": "Maundy Thursday",
+  "2026-04-03": "Good Friday",
+  "2026-04-04": "Black Saturday",
+  "2026-04-09": "Araw ng Kagitingan",
+  "2026-05-01": "Labor Day",
+  "2026-06-12": "Independence Day",
+  "2026-08-21": "Ninoy Aquino Day",
+  "2026-08-31": "National Heroes Day",
+  "2026-11-01": "All Saints' Day",
+  "2026-11-02": "All Souls' Day",
+  "2026-11-30": "Bonifacio Day",
+  "2026-12-08": "Feast of the Immaculate Conception",
+  "2026-12-24": "Christmas Eve",
+  "2026-12-25": "Christmas Day",
+  "2026-12-30": "Rizal Day",
+  "2026-12-31": "Last Day of the Year",
 };
 
 export interface OfficialConfig {
@@ -33,9 +50,28 @@ export interface OfficialConfig {
 }
 
 const DEFAULT_OFFICIAL_HOURS: OfficialConfig = {
-  regular: { arrival: "08:00", departure: "17:00", hours: 8 },
-  saturday: { arrival: "08:00", departure: "12:00", hours: 4 },
+  regular: { arrival: "08:30", departure: "17:30", hours: 8 },
+  saturday: { arrival: "08:30", departure: "12:00", hours: 4 },
 };
+
+const NINE_AM_START_EMPLOYEES = ["jonas", "vince", "earvin", "charlene"];
+
+const LATE_GRACE_MINUTES = 5;
+
+const WORK_DAY_END: Record<string, string> = {
+  "08:30": "17:30",
+  "09:00": "18:00",
+};
+
+function defaultArrivalFor(employeeName: string, position: string): string {
+  if (position?.trim().toLowerCase() === "admin") return "09:00";
+  const first = employeeName.trim().toLowerCase().split(/\s+/)[0] ?? "";
+  return NINE_AM_START_EMPLOYEES.includes(first) ? "09:00" : "08:30";
+}
+
+function defaultDepartureFor(employeeName: string, position: string): string {
+  return WORK_DAY_END[defaultArrivalFor(employeeName, position)] || "17:30";
+}
 
 function fmtTime(iso: string | null): string {
   if (!iso) return "—";
@@ -61,10 +97,16 @@ function computeLate(clockIn: string | null, isSaturday: boolean, official: Offi
   const clockInDate = parseISO(clockIn);
   const clockInMinutes = clockInDate.getHours() * 60 + clockInDate.getMinutes();
   const officialMinutes = oh * 60 + om;
-  const diff = clockInMinutes - officialMinutes;
+  const diff = clockInMinutes - officialMinutes - LATE_GRACE_MINUTES;
   if (diff <= 0) return "0h 0m";
   const h = Math.floor(diff / 60);
   const m = diff % 60;
+  return `${h}h ${m}m`;
+}
+
+function fmtTotalHm(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
   return `${h}h ${m}m`;
 }
 
@@ -75,7 +117,7 @@ function computeUndertime(clockIn: string | null, clockOut: string | null, isSat
   const clockInDate = parseISO(clockIn);
   const clockOutDate = parseISO(clockOut);
   const actualMinutes = (clockOutDate.getTime() - clockInDate.getTime()) / (1000 * 60);
-  const diff = expectedMinutes - actualMinutes;
+  const diff = Math.round(expectedMinutes - actualMinutes);
   if (diff <= 0) return "0h 0m";
   const h = Math.floor(diff / 60);
   const m = diff % 60;
@@ -87,7 +129,8 @@ export default function DailyTimeRecord() {
   const [, setLocation] = useLocation();
   const employeeId = params?.id;
   const { data: currentUser } = useGetMe();
-  const isAdmin = currentUser && (["ADMIN", "admin"].includes(currentUser.role as string) || currentUser.roles?.some((r: string) => ["ADMIN", "admin"].includes(r)));
+  const { data: users } = useListUsers();
+  const isAdmin = currentUser && (["ADMIN", "admin"].includes(currentUser.role as string) || currentUser.roles?.some((r: string) => ["ADMIN", "admin"].includes(r)) || !!currentUser.canAccessAdmin);
 
   const { data: employees, isLoading: employeesLoading } = useEmployees({ enabled: isAdmin });
   const { data: myProfile, isLoading: myProfileLoading } = useMyEmployeeProfile();
@@ -104,27 +147,7 @@ export default function DailyTimeRecord() {
   const selectedPeriod = periods?.find((p) => p.id === selectedPeriodId) ?? null;
 
   const { data: officialHours } = useOfficialHours();
-  const effectiveOfficial: OfficialConfig = officialHours ?? DEFAULT_OFFICIAL_HOURS;
-
-  const [editOfficial, setEditOfficial] = useState<OfficialConfig>(DEFAULT_OFFICIAL_HOURS);
-  const updateOfficial = useUpdateOfficialHours();
-
-  useEffect(() => {
-    if (officialHours) {
-      setEditOfficial({
-        regular: {
-          arrival: officialHours.regular?.arrival || DEFAULT_OFFICIAL_HOURS.regular.arrival,
-          departure: officialHours.regular?.departure || DEFAULT_OFFICIAL_HOURS.regular.departure,
-          hours: officialHours.regular?.hours ?? DEFAULT_OFFICIAL_HOURS.regular.hours,
-        },
-        saturday: {
-          arrival: officialHours.saturday?.arrival || DEFAULT_OFFICIAL_HOURS.saturday.arrival,
-          departure: officialHours.saturday?.departure || DEFAULT_OFFICIAL_HOURS.saturday.departure,
-          hours: officialHours.saturday?.hours ?? DEFAULT_OFFICIAL_HOURS.saturday.hours,
-        },
-      });
-    }
-  }, [officialHours]);
+  const baseOfficial: OfficialConfig = officialHours ?? DEFAULT_OFFICIAL_HOURS;
 
   useEffect(() => {
     if (!periods || periods.length === 0) {
@@ -147,11 +170,17 @@ export default function DailyTimeRecord() {
 
   const targetEmployee = employeeId ? employee : undefined;
   const targetUserId = targetEmployee?.userId || myProfile?.userId || currentUser?.id;
-  const targetName = targetEmployee?.employeeId || myProfile?.employeeId || currentUser?.username || "—";
+  const linkedUser = users?.find(u => String(u.id) === String(targetEmployee?.userId || myProfile?.userId));
+  const targetName = linkedUser?.fullName || linkedUser?.username || targetEmployee?.username || targetEmployee?.employeeId || myProfile?.employeeId || currentUser?.username || "—";
   const targetEmployeeId = targetEmployee?.employeeId || myProfile?.employeeId || "—";
   const targetPosition = targetEmployee?.position || myProfile?.position || "—";
 
-  const logoUrl = companyLogos["JMCS"] || null;
+  const employeeName = linkedUser?.fullName || linkedUser?.username || targetEmployee?.username || targetEmployee?.employeeId || myProfile?.employeeId || currentUser?.username || "";
+  const effectiveOfficial: OfficialConfig = {
+    regular: { ...baseOfficial.regular, arrival: defaultArrivalFor(employeeName, targetPosition), departure: defaultDepartureFor(employeeName, targetPosition) },
+    saturday: { ...baseOfficial.saturday, arrival: defaultArrivalFor(employeeName, targetPosition) },
+  };
+
   const controlNo = controlNumbers["JMCS"] || "JMCS-DC-03";
 
   const coverageDays = useMemo(() => {
@@ -193,7 +222,7 @@ export default function DailyTimeRecord() {
         const [oh, om] = (isSat ? effectiveOfficial.saturday.arrival : effectiveOfficial.regular.arrival).split(":").map(Number);
         const clockInMinutes = parseISO(rec.clockIn).getHours() * 60 + parseISO(rec.clockIn).getMinutes();
         const officialMinutes = oh * 60 + om;
-        const diff = clockInMinutes - officialMinutes;
+        const diff = clockInMinutes - officialMinutes - LATE_GRACE_MINUTES;
         if (diff > 0) total += diff;
       }
     }
@@ -212,7 +241,7 @@ export default function DailyTimeRecord() {
         const clockInDate = parseISO(rec.clockIn);
         const clockOutDate = parseISO(rec.clockOut);
         const actualMinutes = (clockOutDate.getTime() - clockInDate.getTime()) / (1000 * 60);
-        const diff = expectedMinutes - actualMinutes;
+        const diff = Math.round(expectedMinutes - actualMinutes);
         if (diff > 0) total += diff;
       }
     }
@@ -246,7 +275,7 @@ export default function DailyTimeRecord() {
         </Button>
       </div>
 
-      <Card className="neu rounded-2xl">
+      <Card className="neu rounded-lg">
         <CardContent className="pt-4 pb-2">
           <div className="flex flex-wrap items-center gap-4 mb-2">
             <div className="flex items-center gap-2">
@@ -324,61 +353,11 @@ export default function DailyTimeRecord() {
               </div>
             </div>
           )}
-
-          {isAdmin && (
-            <div className="no-print w-full border-t pt-3 mt-2 space-y-3">
-              <div className="text-sm font-medium">Official Hours</div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <div className="text-xs font-medium text-muted-foreground">Regular Days</div>
-                  <div className="flex flex-wrap items-end gap-2">
-                    <div>
-                      <label className="text-xs text-muted-foreground block mb-1">Arrival</label>
-                      <Input type="time" value={editOfficial.regular.arrival} onChange={(e) => setEditOfficial(o => ({ ...o, regular: { ...o.regular, arrival: e.target.value } }))} className="w-28" />
-                    </div>
-                    <div>
-                      <label className="text-xs text-muted-foreground block mb-1">Departure</label>
-                      <Input type="time" value={editOfficial.regular.departure} onChange={(e) => setEditOfficial(o => ({ ...o, regular: { ...o.regular, departure: e.target.value } }))} className="w-28" />
-                    </div>
-                    <div>
-                      <label className="text-xs text-muted-foreground block mb-1">Hours</label>
-                      <Input type="number" min={0.5} step={0.5} value={editOfficial.regular.hours} onChange={(e) => setEditOfficial(o => ({ ...o, regular: { ...o.regular, hours: e.target.value === "" ? 0 : Number(e.target.value) } }))} className="w-20" />
-                    </div>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="text-xs font-medium text-muted-foreground">Saturdays</div>
-                  <div className="flex flex-wrap items-end gap-2">
-                    <div>
-                      <label className="text-xs text-muted-foreground block mb-1">Arrival</label>
-                      <Input type="time" value={editOfficial.saturday.arrival} onChange={(e) => setEditOfficial(o => ({ ...o, saturday: { ...o.saturday, arrival: e.target.value } }))} className="w-28" />
-                    </div>
-                    <div>
-                      <label className="text-xs text-muted-foreground block mb-1">Departure</label>
-                      <Input type="time" value={editOfficial.saturday.departure} onChange={(e) => setEditOfficial(o => ({ ...o, saturday: { ...o.saturday, departure: e.target.value } }))} className="w-28" />
-                    </div>
-                    <div>
-                      <label className="text-xs text-muted-foreground block mb-1">Hours</label>
-                      <Input type="number" min={0.5} step={0.5} value={editOfficial.saturday.hours} onChange={(e) => setEditOfficial(o => ({ ...o, saturday: { ...o.saturday, hours: e.target.value === "" ? 0 : Number(e.target.value) } }))} className="w-20" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Button onClick={() => updateOfficial.mutate(editOfficial)} disabled={updateOfficial.isPending}>
-                  {updateOfficial.isPending ? "Saving…" : "Save Official Hours"}
-                </Button>
-                {updateOfficial.isError && (
-                  <span className="text-sm text-destructive">Failed to save. Times must be HH:MM and departure after arrival.</span>
-                )}
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
 
       {!targetEmployee && employeeId && !employeeLoading && (
-        <Card className="neu rounded-2xl">
+        <Card className="neu rounded-lg">
           <CardContent className="pt-6 pb-6 text-center">
             <Icon name="shield-alert" className="text-destructive mb-4" size={48} />
             <h2 className="text-xl font-bold">Access Denied</h2>
@@ -388,7 +367,7 @@ export default function DailyTimeRecord() {
       )}
 
       {(employeeLoading || recordsLoading) && (
-        <Card className="neu rounded-2xl">
+        <Card className="neu rounded-lg">
           <CardContent className="pt-6 pb-6 text-center">
             <p className="text-muted-foreground">Loading daily time record…</p>
           </CardContent>
@@ -396,15 +375,11 @@ export default function DailyTimeRecord() {
       )}
 
       {targetEmployee && !employeeLoading && !recordsLoading && (
-        <Card className="neu rounded-2xl print:shadow-none print:border print:border-gray-300 print:rounded-none" id="daily-time-record">
+        <Card className="neu rounded-lg print:shadow-none print:border print:border-gray-300 print:rounded-none" id="daily-time-record">
           <CardContent className="pt-4 print:pt-2">
             {/* Header */}
             <div className="text-center mb-4">
-              {logoUrl && (
-                <img src={logoUrl} alt="JMCS" className="h-14 w-auto object-contain mx-auto mb-2" />
-              )}
               <h1 className="text-xl font-bold tracking-tight uppercase">DAILY TIME RECORD</h1>
-              <div className="text-sm text-muted-foreground mt-1">-----o0o-----</div>
             </div>
 
             {/* Metadata */}
@@ -425,14 +400,10 @@ export default function DailyTimeRecord() {
                 <span className="text-muted-foreground">Position:</span>
                 <span className="font-medium underline ml-2">{targetPosition}</span>
               </div>
-              <div className="col-span-2 grid grid-cols-2 gap-x-6">
+              <div className="col-span-2">
                 <div>
                   <span className="text-muted-foreground">Official Hours (Regular Days):</span>
                   <span className="font-medium underline ml-2">{fmtHm(effectiveOfficial.regular.arrival)} — {fmtHm(effectiveOfficial.regular.departure)} ({effectiveOfficial.regular.hours} hrs)</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Official Hours (Saturdays):</span>
-                  <span className="font-medium underline ml-2">{fmtHm(effectiveOfficial.saturday.arrival)} — {fmtHm(effectiveOfficial.saturday.departure)} ({effectiveOfficial.saturday.hours} hrs)</span>
                 </div>
               </div>
             </div>
@@ -472,15 +443,20 @@ export default function DailyTimeRecord() {
                     const dateStr = format(day, "yyyy-MM-dd");
                     const rec = recordsByDate.get(dateStr);
                     const isSat = getDay(day) === 6;
-                    const isSun = getDay(day) === 0;
-                    const isOffDay = isSun;
+                    const dow = getDay(day);
+                    const dayTag = dow === 0 ? "Sun" : dow === 6 ? "Sat" : null;
+                    const holiday = PH_HOLIDAYS[dateStr];
                     const late = computeLate(rec?.clockIn ?? null, isSat, effectiveOfficial);
                     const undertime = computeUndertime(rec?.clockIn ?? null, rec?.clockOut ?? null, isSat, effectiveOfficial);
                     const [utH, utM] = undertime === "—" ? ["0", "0"] : undertime.replace(/h|m/g, "").split(" ");
 
                     return (
-                      <tr key={dateStr} className={isOffDay ? "bg-gray-100" : ""}>
-                        <td className="border-2 border-black p-1 text-center">{format(day, "MMM d")}</td>
+                      <tr key={dateStr} className={holiday ? "dtr-holiday" : dayTag ? "dtr-weekend" : ""}>
+                        <td className="border-2 border-black p-1 text-center">
+                          {format(day, "MMM d")}
+                          {dayTag && <span className="dtr-day">{dayTag}</span>}
+                          {holiday && <span className="dtr-holiday-tag">{holiday}</span>}
+                        </td>
                         <td className="border-2 border-black p-1 text-center">{rec ? fmtTimeShort(rec.clockIn) : ""}</td>
                         <td className="border-2 border-black p-1 text-center">{rec ? fmtTimeShort(rec.clockOut) : ""}</td>
                         <td className="border-2 border-black p-1 text-center">—</td>
@@ -488,7 +464,7 @@ export default function DailyTimeRecord() {
                         <td className="border-2 border-black p-1 text-center">{utH}</td>
                         <td className="border-2 border-black p-1 text-center">{utM}</td>
                         <td className="border-2 border-black p-1 text-center">{late === "0h 0m" && rec ? "0h 0m" : late}</td>
-                        <td className="border-2 border-black p-1 text-center">{isOffDay ? "OFF" : rec ? (rec.status === "approved" ? "OK" : rec.status) : ""}</td>
+                        <td className="border-2 border-black p-1 text-center">{holiday ? "HOLIDAY" : rec ? (rec.status === "approved" ? "OK" : rec.status) : ""}</td>
                       </tr>
                     );
                   })}
@@ -496,8 +472,8 @@ export default function DailyTimeRecord() {
                   <tr className="font-bold border-t-4 border-black">
                     <td className="border-2 border-black p-1 text-center" colSpan={5}>TOTAL</td>
                     <td className="border-2 border-black p-1 text-center">{Math.floor(totalUndertimeMinutes / 60)}</td>
-                    <td className="border-2 border-black p-1 text-center">{totalUndertimeMinutes % 60}</td>
-                    <td className="border-2 border-black p-1 text-center">{Math.floor(totalLateMinutes / 60)}</td>
+                    <td className="border-2 border-black p-1 text-center">{Math.round(totalUndertimeMinutes % 60)}</td>
+                    <td className="border-2 border-black p-1 text-center">{fmtTotalHm(totalLateMinutes)}</td>
                     <td className="border-2 border-black p-1"></td>
                   </tr>
                 </tbody>
@@ -534,6 +510,26 @@ export default function DailyTimeRecord() {
           margin: 0.25in;
           size: letter portrait;
         }
+        .dtr-holiday td { color: #cc0000; font-weight: 600; }
+        .dtr-weekend td { color: #cc0000; }
+        .dtr-day {
+          display: inline-block;
+          margin-left: 4px;
+          padding: 0 4px;
+          border-radius: 3px;
+          background: #cc0000;
+          color: #fff;
+          font-size: 0.6rem;
+          font-weight: 700;
+          text-transform: uppercase;
+        }
+        .dtr-holiday-tag {
+          display: block;
+          font-size: 0.6rem;
+          font-weight: 700;
+          color: #cc0000;
+          text-transform: uppercase;
+        }
         @media print {
           html, body { background: white !important; height: auto !important; overflow: visible !important; }
           .no-print { display: none !important; }
@@ -545,8 +541,13 @@ export default function DailyTimeRecord() {
           .fixed, .absolute { display: none !important; }
           #daily-time-record { break-inside: avoid; display: block !important; }
           #daily-time-record, #daily-time-record * { visibility: visible !important; }
-          #daily-time-record table { font-size: 9pt; }
-          #daily-time-record th, #daily-time-record td { padding: 2px 4px; }
+          #daily-time-record { zoom: 0.8; }
+          #daily-time-record .text-xl { font-size: 13pt !important; }
+          #daily-time-record .text-sm { font-size: 8pt !important; }
+          #daily-time-record table { font-size: 7pt; }
+          #daily-time-record th, #daily-time-record td { padding: 1px 3px; }
+          #daily-time-record .mb-4 { margin-bottom: 6px !important; }
+          #daily-time-record .pt-4 { padding-top: 4px !important; }
         }
       `}</style>
     </div>

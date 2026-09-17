@@ -49,6 +49,9 @@ import EmployeeDashboard from "@/pages/employee/dashboard";
 import ActivityAudit from "@/pages/activity-audit";
 import Profile from "@/pages/profile";
 import Leads from "@/pages/leads";
+import Announcements from "@/pages/announcements";
+import Users from "@/pages/users";
+import Reports from "@/pages/reports";
 
 import NotFound from "@/pages/not-found";
 
@@ -313,6 +316,18 @@ function Router() {
       
       <Route path="/leads">
         <ProtectedRoute component={Leads} />
+      </Route>
+
+      <Route path="/announcements">
+        <ProtectedRoute component={Announcements} />
+      </Route>
+
+      <Route path="/users">
+        <ProtectedRoute component={Users} />
+      </Route>
+
+      <Route path="/reports">
+        <ProtectedRoute component={Reports} />
       </Route>
 
       <Route path="/admin/legal-files">

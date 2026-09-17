@@ -89,7 +89,14 @@ export function useUploadProgress() {
             }
           } else {
             failUpload();
-            reject(new Error(`Upload failed: ${xhr.status}`));
+            let message = `Upload failed (${xhr.status})`;
+            try {
+              const body = JSON.parse(xhr.responseText);
+              if (body?.error) message = body.error;
+            } catch {
+              // non-JSON error body
+            }
+            reject(new Error(message));
           }
         });
 

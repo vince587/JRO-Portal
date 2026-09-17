@@ -9,38 +9,22 @@ import {
   CreateContractBody,
   UpdateContractBody,
 } from "../../lib/api-zod/index.js";
-import { requireAuth, requireRole, requireAnyPermission, hasRole } from "../middlewares/auth";
+import { requireAuth, requirePermission, requireRoleOrPermission } from "../middlewares/auth";
+import { getStorageBucket } from "../lib/firebase-db";
 import { emitChange } from "./sse";
 
 const router: IRouter = Router();
 
-type CurrentUser = {
-  id: string;
-  username: string;
-  email: string;
-  role: string;
-  roles?: string[];
-  fullName: string | null;
-  department: string | null;
-  photoUrl?: string | null;
-  canAccessSis?: boolean;
-  canAccessJmcs?: boolean;
-  canEditCalendar?: boolean;
-  canEditTrainingProposal?: boolean;
-  canManageContracts?: boolean;
-  canManageCertificates?: boolean;
-};
+const SIGNED_URL_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
-function canViewContractType(user: CurrentUser, type: string): boolean {
-  if (hasRole(user, "admin", "ADMIN", "IT")) return true;
-  if (type === "SIS" && user.canAccessSis) return true;
-  if (type === "JMCS" && user.canAccessJmcs) return true;
-  return false;
-}
-
-function filterContractsByAccess(user: CurrentUser, contracts: ContractDoc[]): ContractDoc[] {
-  if (hasRole(user, "admin", "ADMIN", "IT")) return contracts;
-  return contracts.filter(c => canViewContractType(user, c.type));
+async function resolveDocumentUrl(storedAs: string | null): Promise<string | null> {
+  if (!storedAs) return null;
+  try {
+    const [url] = await getStorageBucket().file(storedAs).getSignedUrl({ action: "read", expires: Date.now() + SIGNED_URL_TTL_MS });
+    return url;
+  } catch {
+    return null;
+  }
 }
 
 function mapContract(c: ContractDoc) {
@@ -60,12 +44,14 @@ function mapContract(c: ContractDoc) {
     createdById: c.createdById,
     createdByName: c.createdByName,
     createdByPhotoUrl: c.createdByPhotoUrl ?? null,
+    documentName: c.documentName ?? null,
+    documentUrl: null as string | null,
     createdAt: c.createdAt,
   };
 }
 
 router.get("/contracts/summary", requireAuth, async (req, res): Promise<void> => {
-  const all = filterContractsByAccess(req.currentUser!, await getAll<ContractDoc>("contracts", "createdAt", "desc"));
+  const all = await getAll<ContractDoc>("contracts", "createdAt", "desc");
   const bySis = all.filter(c => c.type === "SIS").length;
   const byJmcs = all.filter(c => c.type === "JMCS").length;
   res.json({
@@ -83,7 +69,7 @@ router.get("/contracts/summary", requireAuth, async (req, res): Promise<void> =>
 
 router.get("/contracts", requireAuth, async (req, res): Promise<void> => {
   const params = ListContractsQueryParams.safeParse(req.query);
-  let rows = filterContractsByAccess(req.currentUser!, await getAll<ContractDoc>("contracts", "createdAt", "desc"));
+  let rows = await getAll<ContractDoc>("contracts", "createdAt", "desc");
   if (params.success) {
     if (params.data.type) rows = rows.filter(c => c.type === params.data.type);
     if (params.data.status) rows = rows.filter(c => c.status === params.data.status);
@@ -96,34 +82,24 @@ router.get("/contracts", requireAuth, async (req, res): Promise<void> => {
     const u = await getDoc<{ photoUrl?: string | null; fullName?: string | null; username?: string }>("users", id);
     photoById.set(id, u?.photoUrl ?? null);
   }));
-  res.json(rows.map(c => {
-    const mapped = mapContract(c);
+  const mapped = rows.map(c => {
+    const m = mapContract(c);
     if (c.createdById && photoById.has(c.createdById)) {
-      mapped.createdByPhotoUrl = photoById.get(c.createdById) ?? mapped.createdByPhotoUrl ?? null;
+      m.createdByPhotoUrl = photoById.get(c.createdById) ?? m.createdByPhotoUrl ?? null;
     }
-    return mapped;
+    return m;
+  });
+  await Promise.all(mapped.map(async (m) => {
+    m.documentUrl = await resolveDocumentUrl(m.documentName ? rows.find(r => r.id === m.id)?.documentStoredAs ?? null : null);
   }));
+  res.json(mapped);
 });
 
-router.post("/contracts", requireAnyPermission("canAccessJmcs", "canAccessSis"), async (req, res): Promise<void> => {
+router.post("/contracts", requirePermission("canManageContracts"), async (req, res): Promise<void> => {
   const parsed = CreateContractBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
-  }
-  if (!canViewContractType(req.currentUser!, parsed.data.type)) {
-    res.status(403).json({ error: "sorry you dont have permission to create this contract" });
-      return;
-    }
-    if (!hasRole(req.currentUser!, "admin", "ADMIN", "IT", "manager")) {
-      if (parsed.data.type === "JMCS" && !req.currentUser!.canAccessJmcs) {
-        res.status(403).json({ error: "sorry you dont have permission to access JMCS contracts" });
-      return;
-    }
-    if (parsed.data.type === "SIS" && !req.currentUser!.canAccessSis) {
-      res.status(403).json({ error: "sorry you dont have permission to access SIS contracts" });
-      return;
-    }
   }
   const now = new Date().toISOString();
   const creatorName = req.currentUser!.fullName || req.currentUser!.username;
@@ -153,19 +129,16 @@ router.get("/contracts/:id", requireAuth, async (req, res): Promise<void> => {
     res.status(404).json({ error: "Contract not found" });
     return;
   }
-  if (!canViewContractType(req.currentUser!, contract.type)) {
-    res.status(403).json({ error: "sorry you dont have permission to view this contract" });
-    return;
-  }
   const mapped = mapContract(contract);
   if (contract.createdById) {
     const u = await getDoc<{ photoUrl?: string | null }>("users", contract.createdById);
     if (u) mapped.createdByPhotoUrl = u.photoUrl ?? mapped.createdByPhotoUrl ?? null;
   }
+  mapped.documentUrl = await resolveDocumentUrl(contract.documentStoredAs ?? null);
   res.json(mapped);
 });
 
-router.patch("/contracts/:id", requireRole("admin", "ADMIN", "IT", "manager"), async (req, res): Promise<void> => {
+router.patch("/contracts/:id", requirePermission("canManageContracts"), async (req, res): Promise<void> => {
   const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const parsed = UpdateContractBody.safeParse(req.body);
   if (!parsed.success) {
@@ -194,14 +167,10 @@ router.patch("/contracts/:id", requireRole("admin", "ADMIN", "IT", "manager"), a
   res.json(mapContract(updated!));
 });
 
-router.post("/contracts/:id/renew", requireAnyPermission("canAccessJmcs", "canAccessSis"), async (req, res): Promise<void> => {
+router.post("/contracts/:id/renew", requirePermission("canManageContracts"), async (req, res): Promise<void> => {
   const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const original = await getDoc<ContractDoc>("contracts", id);
   if (!original) { res.status(404).json({ error: "Contract not found" }); return; }
-  if (!canViewContractType(req.currentUser!, original.type)) {
-    res.status(403).json({ error: "sorry you dont have permission to renew this contract" });
-    return;
-  }
   const oldEnd = new Date(original.endDate);
   const newStart = new Date(oldEnd.getTime() + 24 * 60 * 60 * 1000);
   const duration = oldEnd.getTime() - new Date(original.startDate).getTime();
@@ -244,10 +213,6 @@ router.get("/contracts/:id/timeline", requireAuth, async (req, res): Promise<voi
     res.status(404).json({ error: "Contract not found" });
     return;
   }
-  if (!canViewContractType(req.currentUser!, contract.type)) {
-    res.status(403).json({ error: "sorry you dont have permission to view this contract timeline" });
-    return;
-  }
   const rows = await queryWhere<{ id?: string; type: string; description: string; timestamp: string }>(
     "activity", "entityId", "==", id,
   );
@@ -260,7 +225,7 @@ router.get("/contracts/:id/timeline", requireAuth, async (req, res): Promise<voi
   })));
 });
 
-router.delete("/contracts/:id", requireRole("admin", "ADMIN", "IT"), async (req, res): Promise<void> => {
+router.delete("/contracts/:id", requireRoleOrPermission(["admin", "ADMIN", "IT"], "canManageContracts"), async (req, res): Promise<void> => {
   const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const existing = await getDoc<ContractDoc>("contracts", id);
   if (!existing) {
@@ -276,7 +241,7 @@ const BulkDeleteContractsBody = z.object({
   ids: z.array(z.union([z.string(), z.number()])).min(1).max(500),
 });
 
-router.post("/contracts/bulk-delete", requireRole("admin", "ADMIN", "IT"), async (req, res): Promise<void> => {
+router.post("/contracts/bulk-delete", requireRoleOrPermission(["admin", "ADMIN", "IT"], "canManageContracts"), async (req, res): Promise<void> => {
   const parsed = BulkDeleteContractsBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });

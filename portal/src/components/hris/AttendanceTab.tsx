@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { format } from "date-fns";
 import { Icon } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,9 +28,21 @@ import {
   useTimesheets,
   useSubmitTimesheet,
   useReviewTimesheet,
+  useAttendance,
+  useAdminUpsertAttendance,
+  useAdminDeleteAttendance,
 } from "@/lib/hooks/use-attendance";
+import { useEmployees } from "@/lib/hooks/use-hris";
+import { useListUsers } from "@workspace/api-client-react";
 import { useState as useReactState } from "react";
 import { Link } from "wouter";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 function statusBadge(status: string) {
   const cls =
@@ -54,6 +67,59 @@ export function AttendanceTab({ isAdmin }: AttendanceTabProps) {
   const [tsDialogOpen, setTsDialogOpen] = useState(false);
   const [tsForm, setTsForm] = useState({ periodStart: "", periodEnd: "" });
   const [tsError, setTsError] = useState("");
+
+  const { data: attendance } = useAttendance(undefined, undefined);
+  const { data: employees } = useEmployees({ enabled: isAdmin });
+  const { data: users } = useListUsers();
+  const upsertAttendance = useAdminUpsertAttendance();
+  const deleteAttendance = useAdminDeleteAttendance();
+
+  const [editUserId, setEditUserId] = useState("");
+  const [editDate, setEditDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [editClockIn, setEditClockIn] = useState("");
+  const [editClockOut, setEditClockOut] = useState("");
+
+  const userNameFor = (userId: string) => {
+    const u = users?.find(usr => String(usr.id) === String(userId));
+    return u?.fullName || u?.username || userId;
+  };
+  const employeeNameFor = (userId: string) => {
+    const emp = employees?.find(e => String(e.userId) === String(userId));
+    return emp ? `${userNameFor(userId)} (${emp.employeeId})` : userNameFor(userId);
+  };
+
+  const editRecords = (attendance || [])
+    .filter(r => r.userId === editUserId)
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, 10);
+
+  const handleSaveAttendance = async () => {
+    if (!editUserId || !editDate) return;
+    try {
+      await upsertAttendance.mutateAsync({ userId: editUserId, date: editDate, clockIn: editClockIn, clockOut: editClockOut });
+      toast({ title: "Time card saved" });
+      setEditClockIn("");
+      setEditClockOut("");
+    } catch (e: any) {
+      toast({ title: "Failed to save time card", description: e.message || undefined, variant: "destructive" });
+    }
+  };
+
+  const loadRecord = (rec: { date: string; clockIn: string | null; clockOut: string | null }) => {
+    setEditDate(rec.date);
+    setEditClockIn(rec.clockIn ? format(new Date(rec.clockIn), "HH:mm") : "");
+    setEditClockOut(rec.clockOut ? format(new Date(rec.clockOut), "HH:mm") : "");
+  };
+
+  const handleDeleteAttendance = async (id: string) => {
+    if (!window.confirm("Delete this attendance record? This cannot be undone.")) return;
+    try {
+      await deleteAttendance.mutateAsync(id);
+      toast({ title: "Attendance record deleted" });
+    } catch (e: any) {
+      toast({ title: "Failed to delete record", description: e.message || undefined, variant: "destructive" });
+    }
+  };
 
   const handleSubmitTimesheet = async () => {
     if (!tsForm.periodStart || !tsForm.periodEnd) {
@@ -129,6 +195,96 @@ export function AttendanceTab({ isAdmin }: AttendanceTabProps) {
                 ))}
               </TableBody>
             </Table>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Edit Time Card */}
+      {isAdmin && (
+        <Card>
+          <CardHeader className="pb-3 border-b">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Icon name="clock" size={16} className="text-muted-foreground" />
+              Edit Time Card
+            </CardTitle>
+            <CardDescription>Add or correct an employee's clock-in/out when they forgot to log in. Leave a field blank to clear it.</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-4 space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label>Employee</Label>
+                <Select value={editUserId} onValueChange={setEditUserId}>
+                  <SelectTrigger className="w-full"><SelectValue placeholder="Select employee…" /></SelectTrigger>
+                  <SelectContent>
+                    {employees?.map(emp => (
+                      <SelectItem key={emp.id} value={emp.userId || emp.id}>{employeeNameFor(emp.userId || emp.id)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label>Date</Label>
+                <Input type="date" value={editDate} onChange={e => setEditDate(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label>Clock In</Label>
+                <Input type="time" value={editClockIn} onChange={e => setEditClockIn(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label>Clock Out</Label>
+                <Input type="time" value={editClockOut} onChange={e => setEditClockOut(e.target.value)} />
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button onClick={handleSaveAttendance} disabled={upsertAttendance.isPending || !editUserId || !editDate}>
+                {upsertAttendance.isPending ? "Saving…" : "Save Time Card"}
+              </Button>
+              {upsertAttendance.isError && <span className="text-sm text-destructive">Failed to save.</span>}
+              <span className="text-xs text-muted-foreground">New records use the selected date; editing an existing date updates it.</span>
+            </div>
+
+            {editUserId && (
+              <div className="border-t pt-3">
+                <h4 className="text-sm font-semibold mb-2">Recent records for {editUserId ? employeeNameFor(editUserId) : "—"}</h4>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/10 hover:bg-muted/10">
+                        <TableHead>Date</TableHead>
+                        <TableHead>Clock In</TableHead>
+                        <TableHead>Clock Out</TableHead>
+                        <TableHead>Hours</TableHead>
+                        <TableHead className="w-[120px]"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {editRecords.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">No attendance records for this employee yet.</TableCell>
+                        </TableRow>
+                      ) : editRecords.map(rec => (
+                        <TableRow key={rec.id}>
+                          <TableCell className="text-sm whitespace-nowrap">{rec.date}</TableCell>
+                          <TableCell className="text-sm">{rec.clockIn ? format(new Date(rec.clockIn), "h:mm a") : "—"}</TableCell>
+                          <TableCell className="text-sm">{rec.clockOut ? format(new Date(rec.clockOut), "h:mm a") : "—"}</TableCell>
+                          <TableCell className="text-sm">{rec.hoursWorked}h</TableCell>
+                          <TableCell>
+                            <div className="flex gap-1">
+                              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => loadRecord(rec)}>
+                                <Icon name="edit" size={12} className="mr-1" /> Edit
+                              </Button>
+                              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-destructive" onClick={() => handleDeleteAttendance(rec.id)}>
+                                <Icon name="trash-2" size={12} className="mr-1" /> Delete
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

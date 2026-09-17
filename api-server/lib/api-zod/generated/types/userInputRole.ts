@@ -12,5 +12,6 @@ export type UserInputRole = typeof UserInputRole[keyof typeof UserInputRole];
 export const UserInputRole = {
   admin: 'admin',
   manager: 'manager',
+  officer: 'officer',
   staff: 'staff',
 } as const;

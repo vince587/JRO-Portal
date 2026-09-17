@@ -390,6 +390,8 @@ export default function CertificatesList() {
   const [standardFilter, setStandardFilter] = useState<string>("ALL");
   const [trainingTypeFilter, setTrainingTypeFilter] = useState<string>("ALL");
   const [page, setPage] = useState(1);
+  const [isoPage, setIsoPage] = useState(1);
+  const [trainingPage, setTrainingPage] = useState(1);
   const pageSize = 10;
   const [selectedIds, setSelectedIds] = useState<Set<string | number>>(new Set());
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
@@ -399,6 +401,7 @@ export default function CertificatesList() {
 
   const isJmcsOnly = user?.canAccessJmcs && !user?.canAccessSis;
   const isSisOnly = user?.canAccessSis && !user?.canAccessJmcs;
+  const canManageCertificates = !!user?.canManageCertificates;
 
   // Ensure categoryFilter respects user access
   useEffect(() => {
@@ -497,15 +500,13 @@ export default function CertificatesList() {
     setStandardFilter("ALL");
     setTrainingTypeFilter("ALL");
     setPage(1);
+    setIsoPage(1);
+    setTrainingPage(1);
   };
 
-  const totalItems = filteredCertificates?.length ?? 0;
-  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
-  const currentPage = Math.min(page, totalPages);
-  const pagedCertificates = (filteredCertificates ?? []).slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize
-  );
+  const isoCerts = (filteredCertificates ?? []).filter(c => (c.category || "") === "iso");
+  const trainingCerts = (filteredCertificates ?? []).filter(c => (c.category || "") !== "iso");
+
   const isIsoView = categoryFilter === "iso";
   const columnCount = 10;
 
@@ -513,6 +514,8 @@ export default function CertificatesList() {
   // never lands on a page that no longer has any rows.
   useEffect(() => {
     setPage(1);
+    setIsoPage(1);
+    setTrainingPage(1);
   }, [searchTerm, statusFilter, categoryFilter, standardFilter, trainingTypeFilter]);
 
   // Drop whichever sub-filter no longer applies when the category tab changes.
@@ -534,15 +537,301 @@ export default function CertificatesList() {
     }
   };
 
+  const renderTable = (
+    source: any[],
+    opts: {
+      isoColumns: boolean;
+      showQR: boolean;
+      page: number;
+      setPage: React.Dispatch<React.SetStateAction<number>>;
+      emptyLabel: string;
+    }
+  ) => {
+    const { isoColumns, showQR, page, setPage, emptyLabel } = opts;
+    const totalItems = source.length;
+    const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+    const currentPage = Math.min(page, totalPages);
+    const rows = source.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+    return (
+      <>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/10 hover:bg-muted/10">
+                <TableHead className="w-[40px]">
+                  <Checkbox
+                    checked={
+                      rows.length > 0 && rows.every(c => selectedIds.has(c.id))
+                        ? true
+                        : rows.some(c => selectedIds.has(c.id))
+                          ? "indeterminate"
+                          : false
+                    }
+                    onCheckedChange={() => toggleAllVisible(rows.map(c => c.id))}
+                    aria-label="Select all"
+                  />
+                </TableHead>
+                {isoColumns ? (
+                  <>
+                    <TableHead>ISO Certificate</TableHead>
+                    <TableHead className="hidden sm:table-cell">Certificate No</TableHead>
+                    <TableHead className="hidden lg:table-cell">Issued Date</TableHead>
+                    <TableHead className="hidden lg:table-cell">Expiry</TableHead>
+                    <TableHead className="hidden lg:table-cell">Surveillance 1 Due</TableHead>
+                    <TableHead className="hidden lg:table-cell">Surveillance 2 Due</TableHead>
+                    <TableHead className="hidden lg:table-cell">Recertification Due</TableHead>
+                  </>
+                ) : (
+                  <>
+                    <TableHead>Training Certificate</TableHead>
+                    <TableHead className="hidden sm:table-cell">Certificate #</TableHead>
+                    <TableHead className="hidden md:table-cell">Owner</TableHead>
+                    <TableHead className="hidden lg:table-cell">Created By</TableHead>
+                    <TableHead className="hidden lg:table-cell">Issue Date</TableHead>
+                    <TableHead className="hidden lg:table-cell">Expiry</TableHead>
+                  </>
+                )}
+                <TableHead>Status</TableHead>
+                {showQR && <TableHead className="w-[70px]">QR</TableHead>}
+                <TableHead className="w-[50px]"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                Array(5).fill(0).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton className="h-4 w-4" /></TableCell>
+                    <TableCell>
+                      <div className="space-y-2">
+                        <Skeleton className="h-5 w-48" />
+                        <Skeleton className="h-3 w-32 hidden sm:block" />
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-20" /></TableCell>
+                    {isoColumns ? (
+                      <>
+                        <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
+                        <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
+                        <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
+                        <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
+                        <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
+                      </>
+                    ) : (
+                      <>
+                        <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                        <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
+                        <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
+                        <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
+                      </>
+                    )}
+                    <TableCell><Skeleton className="h-5 w-24 rounded-full" /></TableCell>
+                    {showQR && <TableCell><Skeleton className="h-6 w-10" /></TableCell>}
+                    <TableCell><Skeleton className="h-8 w-8 rounded-md" /></TableCell>
+                  </TableRow>
+                ))
+              ) : rows.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={columnCount} className="h-40 text-center text-muted-foreground">
+                    <div className="flex flex-col items-center justify-center">
+                      <Icon name="shield-check" className="opacity-20 mb-3" size={36} />
+                      <p>{emptyLabel}</p>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                rows.map((cert) => {
+                  const isExpiringSoon = cert.status === 'expiring_soon';
+                  const isIso = cert.category === "iso";
+                  return (
+                    <TableRow key={cert.id} className={`group ${isExpiringSoon ? 'bg-amber-50 dark:bg-amber-900/10' : ''}`}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedIds.has(cert.id)}
+                          onCheckedChange={() => toggleRow(cert.id)}
+                          aria-label={`Select ${cert.title}`}
+                        />
+                      </TableCell>
+                      {isoColumns ? (
+                        <>
+                          <TableCell>
+                            <div className="font-medium">
+                              {cert.standard || "ISO"}
+                            </div>
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell font-mono text-xs font-medium">
+                            {cert.certificateNumber || <span className="italic">N/A</span>}
+                          </TableCell>
+                          <TableCell className="hidden lg:table-cell text-sm">
+                            {formatDateSafe(cert.issueDate) ?? <span className="text-muted-foreground italic">—</span>}
+                          </TableCell>
+                          <TableCell className="hidden lg:table-cell text-sm">
+                            {formatDateSafe(cert.expiryDate) ?? <span className="text-muted-foreground italic">—</span>}
+                          </TableCell>
+                          <TableCell className="hidden lg:table-cell text-sm">
+                            {addYearsSafe(cert.issueDate, 1) ?? <span className="text-muted-foreground italic">—</span>}
+                          </TableCell>
+                          <TableCell className="hidden lg:table-cell text-sm">
+                            {addYearsSafe(cert.issueDate, 2) ?? <span className="text-muted-foreground italic">—</span>}
+                          </TableCell>
+                          <TableCell className="hidden lg:table-cell text-sm">
+                            {addYearsSafe(cert.issueDate, 3) ?? <span className="text-muted-foreground italic">—</span>}
+                          </TableCell>
+                        </>
+                      ) : (
+                        <>
+                          <TableCell>
+                            <div className="font-medium">
+                              {isIso ? cert.standard || "ISO" : cert.trainingType || "Training"}
+                            </div>
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell font-mono text-xs font-medium">
+                            {cert.certificateNumber || <span className="italic">N/A</span>}
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-medium">
+                              {cert.recipientName || <span className="text-muted-foreground italic">Unspecified</span>}
+                            </div>
+                            {cert.recipientEmail && (
+                              <div className="text-xs text-muted-foreground">{cert.recipientEmail}</div>
+                            )}
+                          </TableCell>
+                          <TableCell className="hidden lg:table-cell text-xs text-muted-foreground">
+                            {(cert as any).createdByName || <span className="italic">—</span>}
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell text-sm">
+                            {formatDateSafe(cert.issueDate) ?? <span className="text-muted-foreground italic">—</span>}
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell text-sm">
+                            {formatDateSafe(cert.expiryDate) ?? <span className="text-muted-foreground italic">—</span>}
+                          </TableCell>
+                        </>
+                      )}
+                      <TableCell>
+                        {getStatusBadge(cert.status)}
+                      </TableCell>
+                      {showQR && (
+                        <TableCell>
+                          {cert.category === "iso" ? null : cert.qrCodeUrl ? (
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <QRCodeThumbnail url={cert.qrCodeUrl} />
+                              </DialogTrigger>
+                              <DialogContent className="sm:max-w-sm">
+                                <DialogHeader>
+                                  <DialogTitle>QR Code — {cert.title}</DialogTitle>
+                                  <DialogDescription>
+                                    Scan this QR code to verify the certificate at {VERIFY_URL}
+                                  </DialogDescription>
+                                </DialogHeader>
+                                <div className="flex justify-center p-4">
+                                  <img
+                                    src={cert.qrCodeUrl}
+                                    alt="QR Code"
+                                    className="w-48 h-48 object-contain border rounded-lg"
+                                  />
+                                </div>
+                                <div className="text-center text-xs text-muted-foreground">
+                                  <Icon name="external-link" className="inline mr-1" size={12} />
+                                  <a href={VERIFY_URL} target="_blank" rel="noopener noreferrer" className="underline">
+                                    {VERIFY_URL}
+                                  </a>
+                                </div>
+                                <DialogFooter>
+                                  <Button variant="outline" asChild>
+                                    <a href={cert.qrCodeUrl} download={`qr-${cert.id}.png`}>
+                                      <Icon name="download" className="mr-2" size={16} />
+                                      Download
+                                    </a>
+                                  </Button>
+                                </DialogFooter>
+                              </DialogContent>
+                            </Dialog>
+                          ) : (
+                            <QRCodeThumbnail url={null} />
+                          )}
+                        </TableCell>
+                      )}
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <span className="sr-only">Open menu</span>
+                              <Icon name="more-horizontal" size={16} />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem asChild>
+                              <Link href={`/certificates/${cert.id}`} className="cursor-pointer flex w-full">
+                                <Icon name="eye" className="mr-2" size={16} />
+                                View Details
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                              <Link href={`/certificates/${cert.id}?edit=true`} className="cursor-pointer flex w-full">
+                                <Icon name="edit" className="mr-2" size={16} />
+                                Edit Record
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem className="text-destructive focus:bg-destructive/10 cursor-pointer">
+                              <Icon name="trash-2" className="mr-2" size={16} />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        {!isLoading && totalItems > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t neu-inset rounded-xl">
+            <span className="text-xs text-muted-foreground">
+              Showing {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, totalItems)} of {totalItems}
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1"
+                disabled={currentPage <= 1}
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+              >
+                <Icon name="chevron-left" size={16} />
+                Previous
+              </Button>
+              <span className="text-xs text-muted-foreground tabular-nums px-1">
+                Page {currentPage} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1"
+                disabled={currentPage >= totalPages}
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              >
+                Next
+                <Icon name="chevron-right" size={16} />
+              </Button>
+            </div>
+          </div>
+        )}
+      </>
+    );
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-            <Icon name="shield-check" className="text-amber-500" size={28} />
-            {isIsoRoute ? "ISO Certificates" : isTrainingRoute ? "Training Certificates" : "Certificates & Training"}
-          </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-muted-foreground">
             {isIsoRoute ? "Manage ISO certification records." : isTrainingRoute ? "Manage training records." : "Track client ISO and Training Certificates"}
           </p>
         </div>
@@ -556,8 +845,8 @@ export default function CertificatesList() {
               Export
             </a>
           </Button>
-          {user ? (
-            <Button asChild>
+          {user && canManageCertificates ? (
+            <Button asChild variant="success">
               <Link href="/certificates/new" className="flex items-center">
                 <Icon name="plus" className="mr-2" size={16} />
                 {isIsoRoute ? "Add ISO Certificate" : isTrainingRoute ? "Add Training Record" : "Add Record"}
@@ -572,7 +861,7 @@ export default function CertificatesList() {
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Please sign in to add certificates</p>
+                <p>{user ? "sorry you dont have permission to add certificates" : "Please sign in to add certificates"}</p>
               </TooltipContent>
             </Tooltip>
           )}
@@ -592,7 +881,7 @@ export default function CertificatesList() {
         </div>
       )}
 
-      <Card className="neu rounded-2xl">
+      <Card className="neu rounded-lg">
         <CardContent className="p-0">
           <div className="p-4 border-b flex flex-col md:flex-row gap-4 items-center justify-between neu-inset rounded-xl">
             <div className="flex-1 w-full flex items-center relative">
@@ -672,278 +961,44 @@ export default function CertificatesList() {
               </Button>
             )}
           </div>
-
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/10 hover:bg-muted/10">
-                  <TableHead className="w-[40px]">
-                    <Checkbox
-                      checked={
-                        pagedCertificates.length > 0 &&
-                        pagedCertificates.every(c => selectedIds.has(c.id))
-                          ? true
-                          : pagedCertificates.some(c => selectedIds.has(c.id))
-                            ? "indeterminate"
-                            : false
-                      }
-                      onCheckedChange={() => toggleAllVisible(pagedCertificates.map(c => c.id))}
-                      aria-label="Select all"
-                    />
-                  </TableHead>
-                  {isIsoView ? (
-                    <>
-                      <TableHead>ISO Certificate</TableHead>
-                      <TableHead className="hidden sm:table-cell">Certificate No</TableHead>
-                      <TableHead className="hidden lg:table-cell">Issued Date</TableHead>
-                      <TableHead className="hidden lg:table-cell">Expiry</TableHead>
-                      <TableHead className="hidden lg:table-cell">Surveillance 1 Due</TableHead>
-                      <TableHead className="hidden lg:table-cell">Surveillance 2 Due</TableHead>
-                      <TableHead className="hidden lg:table-cell">Recertification Due</TableHead>
-                    </>
-                  ) : (
-                    <>
-                      <TableHead>Training Certificate</TableHead>
-                      <TableHead className="hidden sm:table-cell">Certificate #</TableHead>
-                      <TableHead className="hidden md:table-cell">Owner</TableHead>
-                      <TableHead className="hidden lg:table-cell">Created By</TableHead>
-                      <TableHead className="hidden lg:table-cell">Issue Date</TableHead>
-                      <TableHead className="hidden lg:table-cell">Expiry</TableHead>
-                    </>
-                  )}
-                  <TableHead>Status</TableHead>
-                  {!isIsoView && <TableHead className="w-[70px]">QR</TableHead>}
-                  <TableHead className="w-[50px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  Array(5).fill(0).map((_, i) => (
-                    <TableRow key={i}>
-                      <TableCell><Skeleton className="h-4 w-4" /></TableCell>
-                      <TableCell>
-                        <div className="space-y-2">
-                          <Skeleton className="h-5 w-48" />
-                          <Skeleton className="h-3 w-32 hidden sm:block" />
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-20" /></TableCell>
-                      {isIsoView ? (
-                        <>
-                          <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
-                          <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
-                          <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
-                          <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
-                          <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
-                        </>
-                      ) : (
-                        <>
-                          <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-                          <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
-                          <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
-                          <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
-                        </>
-                      )}
-                      <TableCell><Skeleton className="h-5 w-24 rounded-full" /></TableCell>
-                      {!isIsoView && <TableCell><Skeleton className="h-6 w-10" /></TableCell>}
-                      <TableCell><Skeleton className="h-8 w-8 rounded-md" /></TableCell>
-                    </TableRow>
-                  ))
-                ) : pagedCertificates.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={columnCount} className="h-48 text-center text-muted-foreground">
-                      <div className="flex flex-col items-center justify-center">
-                        <Icon name="shield-check" className="opacity-20 mb-4" size={40} />
-                        <p>No certificates found matching your criteria.</p>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  pagedCertificates.map((cert) => {
-                    const isExpiringSoon = cert.status === 'expiring_soon';
-                    const isIso = cert.category === "iso";
-                    return (
-                      <TableRow key={cert.id} className={`group ${isExpiringSoon ? 'bg-amber-50 dark:bg-amber-900/10' : ''}`}>
-                        <TableCell>
-                          <Checkbox
-                            checked={selectedIds.has(cert.id)}
-                            onCheckedChange={() => toggleRow(cert.id)}
-                            aria-label={`Select ${cert.title}`}
-                          />
-                        </TableCell>
-                        {isIsoView ? (
-                          <>
-                            <TableCell>
-                              <div className="font-medium">
-                                {cert.standard || "ISO"}
-                              </div>
-                            </TableCell>
-                            <TableCell className="hidden sm:table-cell font-mono text-xs font-medium">
-                              {cert.certificateNumber || <span className="italic">N/A</span>}
-                            </TableCell>
-                            <TableCell className="hidden lg:table-cell text-sm">
-                              {formatDateSafe(cert.issueDate) ?? <span className="text-muted-foreground italic">—</span>}
-                            </TableCell>
-                            <TableCell className="hidden lg:table-cell text-sm">
-                              {formatDateSafe(cert.expiryDate) ?? <span className="text-muted-foreground italic">—</span>}
-                            </TableCell>
-                            <TableCell className="hidden lg:table-cell text-sm">
-                              {addYearsSafe(cert.issueDate, 1) ?? <span className="text-muted-foreground italic">—</span>}
-                            </TableCell>
-                            <TableCell className="hidden lg:table-cell text-sm">
-                              {addYearsSafe(cert.issueDate, 2) ?? <span className="text-muted-foreground italic">—</span>}
-                            </TableCell>
-                            <TableCell className="hidden lg:table-cell text-sm">
-                              {addYearsSafe(cert.issueDate, 3) ?? <span className="text-muted-foreground italic">—</span>}
-                            </TableCell>
-                          </>
-                        ) : (
-                          <>
-                            <TableCell>
-                              <div className="font-medium">
-                                {isIso ? cert.standard || "ISO" : cert.trainingType || "Training"}
-                              </div>
-                            </TableCell>
-                            <TableCell className="hidden sm:table-cell font-mono text-xs font-medium">
-                              {cert.certificateNumber || <span className="italic">N/A</span>}
-                            </TableCell>
-                            <TableCell>
-                              <div className="font-medium">
-                                {cert.recipientName || <span className="text-muted-foreground italic">Unspecified</span>}
-                              </div>
-                              {cert.recipientEmail && (
-                                <div className="text-xs text-muted-foreground">{cert.recipientEmail}</div>
-                              )}
-                            </TableCell>
-                            <TableCell className="hidden lg:table-cell text-xs text-muted-foreground">
-                              {(cert as any).createdByName || <span className="italic">—</span>}
-                            </TableCell>
-                            <TableCell className="hidden sm:table-cell text-sm">
-                              {formatDateSafe(cert.issueDate) ?? <span className="text-muted-foreground italic">—</span>}
-                            </TableCell>
-                            <TableCell className="hidden sm:table-cell text-sm">
-                              {formatDateSafe(cert.expiryDate) ?? <span className="text-muted-foreground italic">—</span>}
-                            </TableCell>
-                          </>
-                        )}
-                        <TableCell>
-                          {getStatusBadge(cert.status)}
-                        </TableCell>
-                        {!isIsoView && (
-                          <TableCell>
-                            {cert.category === "iso" ? null : cert.qrCodeUrl ? (
-                              <Dialog>
-                                <DialogTrigger asChild>
-                                  <QRCodeThumbnail url={cert.qrCodeUrl} />
-                                </DialogTrigger>
-                                <DialogContent className="sm:max-w-sm">
-                                  <DialogHeader>
-                                    <DialogTitle>QR Code — {cert.title}</DialogTitle>
-                                    <DialogDescription>
-                                      Scan this QR code to verify the certificate at {VERIFY_URL}
-                                    </DialogDescription>
-                                  </DialogHeader>
-                                  <div className="flex justify-center p-4">
-                                    <img 
-                                      src={cert.qrCodeUrl} 
-                                      alt="QR Code" 
-                                      className="w-48 h-48 object-contain border rounded-lg"
-                                    />
-                                  </div>
-                                  <div className="text-center text-xs text-muted-foreground">
-                                    <Icon name="external-link" className="inline mr-1" size={12} />
-                                    <a href={VERIFY_URL} target="_blank" rel="noopener noreferrer" className="underline">
-                                      {VERIFY_URL}
-                                    </a>
-                                  </div>
-                                  <DialogFooter>
-                                    <Button variant="outline" asChild>
-                                      <a href={cert.qrCodeUrl} download={`qr-${cert.id}.png`}>
-                                        <Icon name="download" className="mr-2" size={16} />
-                                        Download
-                                      </a>
-                                    </Button>
-                                  </DialogFooter>
-                                </DialogContent>
-                              </Dialog>
-                            ) : (
-                              <QRCodeThumbnail url={null} />
-                            )}
-                          </TableCell>
-                        )}
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <span className="sr-only">Open menu</span>
-                                <Icon name="more-horizontal" size={16} />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem asChild>
-                                <Link href={`/certificates/${cert.id}`} className="cursor-pointer flex w-full">
-                                  <Icon name="eye" className="mr-2" size={16} />
-                                  View Details
-                                </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem asChild>
-                                <Link href={`/certificates/${cert.id}?edit=true`} className="cursor-pointer flex w-full">
-                                  <Icon name="edit" className="mr-2" size={16} />
-                                  Edit Record
-                                </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem className="text-destructive focus:bg-destructive/10 cursor-pointer">
-                                <Icon name="trash-2" className="mr-2" size={16} />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </div>
-
-          {!isLoading && totalItems > 0 && (
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t neu-inset rounded-xl">
-              <span className="text-xs text-muted-foreground">
-                Showing {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, totalItems)} of {totalItems}
-              </span>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1"
-                  disabled={currentPage <= 1}
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
-                >
-                  <Icon name="chevron-left" size={16} />
-                  Previous
-                </Button>
-                <span className="text-xs text-muted-foreground tabular-nums px-1">
-                  Page {currentPage} of {totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1"
-                  disabled={currentPage >= totalPages}
-                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                >
-                  Next
-                  <Icon name="chevron-right" size={16} />
-                </Button>
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
+
+      {categoryFilter === "all" ? (
+        <div className="space-y-6">
+          <Card className="neu rounded-lg">
+            <CardContent className="p-0">
+              <div className="px-4 py-3 border-b flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Icon name="shield-check" className="text-amber-500" size={18} />
+                  <h2 className="text-base font-semibold">ISO Certificates</h2>
+                  <Badge variant="secondary">{isoCerts.length}</Badge>
+                </div>
+              </div>
+              {renderTable(isoCerts, { isoColumns: true, showQR: false, page: isoPage, setPage: setIsoPage, emptyLabel: "No ISO certificates found." })}
+            </CardContent>
+          </Card>
+
+          <Card className="neu rounded-lg">
+            <CardContent className="p-0">
+              <div className="px-4 py-3 border-b flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Icon name="graduation-cap" className="text-emerald-500" size={18} />
+                  <h2 className="text-base font-semibold">Training Certificates</h2>
+                  <Badge variant="secondary">{trainingCerts.length}</Badge>
+                </div>
+              </div>
+              {renderTable(trainingCerts, { isoColumns: false, showQR: true, page: trainingPage, setPage: setTrainingPage, emptyLabel: "No training certificates found." })}
+            </CardContent>
+          </Card>
+        </div>
+      ) : (
+        <Card className="neu rounded-lg">
+          <CardContent className="p-0">
+            {renderTable(filteredCertificates ?? [], { isoColumns: isIsoView, showQR: !isIsoView, page, setPage, emptyLabel: "No certificates found matching your criteria." })}
+          </CardContent>
+        </Card>
+      )}
 
       <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
         <AlertDialogContent>

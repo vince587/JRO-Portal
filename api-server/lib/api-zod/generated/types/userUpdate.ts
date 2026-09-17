@@ -22,6 +22,7 @@ export interface UserUpdate {
   canManageCertificates?: boolean;
   canAccessProjects?: boolean;
   canAccessAdmin?: boolean;
+  canAccessDevelopers?: boolean;
   photoUrl?: string;
   password?: string;
 }
