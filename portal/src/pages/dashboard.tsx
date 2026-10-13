@@ -297,7 +297,6 @@ export default function Dashboard() {
                       <p className="text-sm font-medium leading-snug text-foreground">{activity.description}</p>
                       <div className="flex items-center text-xs text-muted-foreground gap-2">
                         <span>{format(new Date(activity.timestamp), "MMM d, h:mm a")}</span>
-                        <span className="w-1 h-1 rounded-full bg-gray-300"></span>
                         <span className="capitalize">{activity.type}</span>
                       </div>
                     </div>
@@ -351,7 +350,6 @@ export default function Dashboard() {
                     <div className="space-y-2 text-sm">
                       {contractStatusData.map(d => (
                         <div key={d.name} className="flex items-center gap-2.5">
-                          <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: d.color }} />
                           <span className="text-muted-foreground">{d.name}: <strong className="tabular text-foreground">{d.value}</strong></span>
                         </div>
                       ))}

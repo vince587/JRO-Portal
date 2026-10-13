@@ -197,7 +197,6 @@ export default function ActivityAudit() {
                       <p className="text-sm font-medium leading-snug">{activity.description}</p>
                       <div className="flex items-center text-xs text-muted-foreground gap-2">
                         <span>{format(new Date(activity.timestamp), "MMM d, yyyy h:mm a")}</span>
-                        <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
                         <span className="capitalize">{activity.type}</span>
                       </div>
                     </div>

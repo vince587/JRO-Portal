@@ -44,7 +44,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { SaveProgressIndicator } from "@/components/upload-progress";
-import { CategoryChip, CategoryDot, categoryColor } from "@/components/category-chip";
+import { CategoryChip, categoryColor } from "@/components/category-chip";
 
 function toLocalDateStr(d: string) {
   const p = parseISO(d);
@@ -484,13 +484,13 @@ export default function Calendar() {
                              <div 
                                key={event.id} 
                                 onClick={e => { e.stopPropagation(); if (canEdit) openEditEvent(event); }}
-                               className={`text-[10px] px-1.5 py-1 rounded border font-medium break-words whitespace-normal leading-tight ${canEdit ? 'cursor-pointer hover:opacity-80' : ''}`}
-                               style={{ borderColor: categoryColor(getEffectiveType(event)), color: "inherit" }}
+                               className={`text-[10px] px-1.5 py-1 rounded font-medium break-words whitespace-normal leading-tight text-white ${canEdit ? 'cursor-pointer hover:opacity-90' : ''}`}
+                               style={{ backgroundColor: categoryColor(getEffectiveType(event)) }}
                                title={`${event.title} — ${getStatusLabel(event.status)}`}
                              >
-                              {!event.allDay && <span className="mr-1 opacity-70">{format(parseISO(event.startDate), 'HH:mm')}</span>}
+                              {!event.allDay && <span className="mr-1 opacity-80">{format(parseISO(event.startDate), 'HH:mm')}</span>}
                               {event.title}
-                            </div>
+                             </div>
                           ))
                         )}
                         {dayEvents.length > 4 && (
@@ -636,12 +636,9 @@ export default function Calendar() {
         <EventDialog open={eventDialogOpen} onOpenChange={setEventDialogOpen} defaultDate={eventDialogDate} editingEvent={editingEvent} onSuccess={refetchEvents} canEdit={canEdit} />
       </div>
 
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 no-print">
+      <div className="flex flex-wrap items-center gap-2 no-print">
         {typeLegend.map(s => (
-          <span key={s.key} className="inline-flex items-center gap-1.5 text-xs font-medium capitalize text-muted-foreground">
-            <CategoryDot category={s.key} />
-            {s.label}
-          </span>
+          <CategoryChip key={s.key} category={s.key} label={s.label} className="capitalize" />
         ))}
       </div>
 

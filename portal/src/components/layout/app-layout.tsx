@@ -16,7 +16,6 @@ import { Icon } from "@/components/ui/icon";
 import { useLogout } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNotifications } from "@/hooks/use-notifications";
-import { useAppUpdate } from "@/hooks/use-app-update";
 import {
   Sheet,
   SheetContent,
@@ -391,8 +390,6 @@ function SidebarShell() {
 export function AppLayout({ children }: { children: ReactNode }) {
   const { user, isLoading, logout } = useAuth();
   const [location, setLocation] = useLocation();
-  const { data: notifications = [] } = useNotifications();
-  const update = useAppUpdate();
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<{ contracts: any[]; certificates: any[]; projects: any[]; users: any[] }>({ contracts: [], certificates: [], projects: [], users: [] });
@@ -480,9 +477,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
     );
   }
 
-  const updateAvailable = update.isDesktop && update.phase === "available";
-  const alertCount = notifications.length + (updateAvailable ? 1 : 0);
-
   return (
     <SidebarProvider>
       <div className="flex h-screen w-full bg-background overflow-hidden">
@@ -495,9 +489,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
               <span className="text-[11px] font-bold text-primary uppercase tracking-tighter">JMCS Organization</span>
               <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
                 <span className="flex items-center gap-1">
-                  <span className="inline-flex h-4 min-w-4 items-center justify-center rounded bg-red-500 px-1 text-[10px] font-bold leading-none text-white tabular">
-                    {alertCount}
-                  </span>
                   {new Date().toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                 </span>
               </div>

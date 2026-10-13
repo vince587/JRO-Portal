@@ -55,7 +55,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
 import ContractsImportDialog, { downloadContractsTemplate } from "@/pages/contracts-import-dialog";
-import { StatusBadge, statusLabel, toneFor, toneHex } from "@/components/status-badge";
+import { StatusBadge, statusLabel } from "@/components/status-badge";
 import { PageHeader } from "@/components/page-header";
 
 function todayStr() {
@@ -417,11 +417,7 @@ export default function ContractsList() {
             <div className="grid grid-cols-2 gap-3">
               {["active", "pending", "completed", "expired"].map((s) => (
                 <div key={s} className="surface-sunken rounded-md p-3">
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <span
-                      className="h-1.5 w-1.5 shrink-0 rounded-full"
-                      style={{ backgroundColor: toneHex(toneFor(s)) }}
-                    />
+                  <div className="text-xs text-muted-foreground">
                     {statusLabel(s)}
                   </div>
                   <div className="text-xl font-bold tabular">{contractAnalysis?.byStatus?.[s] ?? 0}</div>

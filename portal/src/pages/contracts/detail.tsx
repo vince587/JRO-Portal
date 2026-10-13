@@ -746,10 +746,8 @@ function TimelineView({ contractId }: { contractId: number }) {
     <div className="space-y-0">
       {timeline.map((entry: any, i: number) => (
         <div key={entry.id} className="flex gap-3 pb-3 relative">
-          {i < timeline.length - 1 && <div className="absolute left-[7px] top-4 bottom-0 w-px bg-border" />}
-          <div className="mt-1 flex h-3 w-3 shrink-0 items-center justify-center rounded-full bg-primary/20 border border-primary/40">
-            <div className="h-1.5 w-1.5 rounded-full bg-primary" />
-          </div>
+          {i < timeline.length - 1 && <div className="absolute left-[5px] top-4 bottom-0 w-px bg-border" />}
+          <div className="mt-1 flex h-2.5 w-2.5 shrink-0 items-center justify-center rounded-full bg-primary" />
           <div className="flex-1 min-w-0">
             <p className="text-sm">{entry.description}</p>
             <p className="text-xs text-muted-foreground mt-0.5">{format(new Date(entry.timestamp), "MMM d, yyyy h:mm a")}</p>
