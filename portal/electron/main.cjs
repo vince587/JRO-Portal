@@ -1,7 +1,6 @@
 const { app, BrowserWindow, dialog, ipcMain, Menu } = require("electron");
 const path = require("path");
 const { spawn } = require("child_process");
-const { startServer } = require("./server.cjs");
 const { startDetectServer, stopDetectServer } = require("./detect-server.cjs");
 const { initUpdater, stopUpdater, registerUpdaterIpc } = require("./updater.cjs");
 const fs = require("fs");
