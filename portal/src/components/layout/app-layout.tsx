@@ -495,7 +495,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
               <span className="text-[11px] font-bold text-primary uppercase tracking-tighter">JMCS Organization</span>
               <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
                 <span className="flex items-center gap-1">
-                  <span className="inline-block h-4 w-4 rounded bg-red-500 text-[10px] text-white flex items-center justify-center font-bold">{alertCount}</span>
+                  <span className="inline-flex h-4 min-w-4 items-center justify-center rounded bg-red-500 px-1 text-[10px] font-bold leading-none text-white tabular">
+                    {alertCount}
+                  </span>
                   {new Date().toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                 </span>
               </div>
