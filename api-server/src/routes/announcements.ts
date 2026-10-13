@@ -92,7 +92,7 @@ router.post("/announcements", requireRole("admin", "ADMIN", "IT"), async (req, r
 
 router.patch("/announcements/:id", requireRole("admin", "ADMIN", "IT"), async (req, res): Promise<void> => {
   const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-  const existing = await getDoc("announcements", id);
+  const existing = await getDoc<{ title?: string }>("announcements", id);
   if (!existing) { res.status(404).json({ error: "Announcement not found" }); return; }
   const parsed = UpdateAnnouncementSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
@@ -101,7 +101,7 @@ router.patch("/announcements/:id", requireRole("admin", "ADMIN", "IT"), async (r
   const updated = await getDoc("announcements", id);
   await createDoc("activity", {
     type: "announcement",
-    description: `Announcement "${existing.title}" updated`,
+    description: `Announcement "${existing.title ?? ""}" updated`,
     entityId: id,
     timestamp: now,
   });

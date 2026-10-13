@@ -59,6 +59,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SaveProgressIndicator } from "@/components/upload-progress";
+import { PageHeader } from "@/components/page-header";
 import { storage, hasConfig as hasFirebase } from "@/lib/firebase";
 import { ref, listAll, getDownloadURL } from "firebase/storage";
 
@@ -70,7 +71,7 @@ const VERIFY_URL = "https://certvrfy.jro-jmcs.com";
 function QRCodeThumbnail({ url, onClick }: { url?: string | null; onClick?: () => void }) {
   return (
     <div
-      className="w-10 h-10 rounded-md neu-inset flex items-center justify-center overflow-hidden cursor-pointer hover:border-primary/50 hover:shadow-sm transition-all shrink-0"
+      className="w-10 h-10 rounded-md surface-sunken flex items-center justify-center overflow-hidden cursor-pointer hover:border-primary/50 hover:shadow-sm transition-all shrink-0"
       onClick={onClick}
       title={url ? "Click to view QR code" : "QR code not yet generated"}
     >
@@ -527,11 +528,11 @@ export default function CertificatesList() {
   const getStatusBadge = (status: CertificateStatus) => {
     switch (status) {
       case 'active':
-        return <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-900/50">Active</Badge>;
+        return <Badge variant="outline" className="tone-success">Active</Badge>;
       case 'expiring_soon':
-        return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-900/50">Expiring Soon</Badge>;
+        return <Badge variant="outline" className="tone-warning">Expiring Soon</Badge>;
       case 'expired':
-        return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-900/50">Expired</Badge>;
+        return <Badge variant="outline" className="tone-danger">Expired</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -792,7 +793,7 @@ export default function CertificatesList() {
         </div>
 
         {!isLoading && totalItems > 0 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t neu-inset rounded-xl">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t surface-sunken rounded-lg">
             <span className="text-xs text-muted-foreground">
               Showing {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, totalItems)} of {totalItems}
             </span>
@@ -828,45 +829,44 @@ export default function CertificatesList() {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <p className="text-muted-foreground">
-            {isIsoRoute ? "Manage ISO certification records." : isTrainingRoute ? "Manage training records." : "Track client ISO and Training Certificates"}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <FirebaseImportDialog />
-          <BulkImportButton />
-          <JsonImportDialog />
-          <Button variant="outline" asChild>
-            <a href="/api/reports/certificates" download>
-              <Icon name="download" className="mr-2" size={16} />
-              Export
-            </a>
-          </Button>
-          {user && canManageCertificates ? (
-            <Button asChild variant="success">
-              <Link href="/certificates/new" className="flex items-center">
-                <Icon name="plus" className="mr-2" size={16} />
-                {isIsoRoute ? "Add ISO Certificate" : isTrainingRoute ? "Add Training Record" : "Add Record"}
-              </Link>
+    <div className="space-y-6 page-enter">
+      <PageHeader
+        title={isIsoRoute ? "ISO Certificates" : isTrainingRoute ? "Training Records" : "Certificates"}
+        description={isIsoRoute ? "Manage ISO certification records." : isTrainingRoute ? "Manage training records." : "Track client ISO and Training Certificates"}
+        actions={
+          <div className="flex items-center gap-2">
+            <FirebaseImportDialog />
+            <BulkImportButton />
+            <JsonImportDialog />
+            <Button variant="outline" asChild>
+              <a href="/api/reports/certificates" download>
+                <Icon name="download" className="mr-2" size={16} />
+                Export
+              </a>
             </Button>
-          ) : (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button disabled>
+            {user && canManageCertificates ? (
+              <Button asChild>
+                <Link href="/certificates/new" className="flex items-center">
                   <Icon name="plus" className="mr-2" size={16} />
                   {isIsoRoute ? "Add ISO Certificate" : isTrainingRoute ? "Add Training Record" : "Add Record"}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{user ? "sorry you dont have permission to add certificates" : "Please sign in to add certificates"}</p>
-              </TooltipContent>
-            </Tooltip>
-          )}
-        </div>
-      </div>
+                </Link>
+              </Button>
+            ) : (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button disabled>
+                    <Icon name="plus" className="mr-2" size={16} />
+                    {isIsoRoute ? "Add ISO Certificate" : isTrainingRoute ? "Add Training Record" : "Add Record"}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{user ? "sorry you dont have permission to add certificates" : "Please sign in to add certificates"}</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </div>
+        }
+      />
 
       {selectedIds.size > 0 && (
         <div className="flex items-center justify-between rounded-lg border bg-muted/40 px-4 py-2">
@@ -881,9 +881,9 @@ export default function CertificatesList() {
         </div>
       )}
 
-      <Card className="neu rounded-lg">
+      <Card className="surface rounded-lg">
         <CardContent className="p-0">
-          <div className="p-4 border-b flex flex-col md:flex-row gap-4 items-center justify-between neu-inset rounded-xl">
+          <div className="p-4 border-b flex flex-col md:flex-row gap-4 items-center justify-between surface-sunken rounded-lg">
             <div className="flex-1 w-full flex items-center relative">
               <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
               <Input 
@@ -904,7 +904,7 @@ export default function CertificatesList() {
             </div>
           </div>
 
-          <div className="px-4 py-2 border-b flex flex-wrap gap-2 items-center neu-inset rounded-xl">
+          <div className="px-4 py-2 border-b flex flex-wrap gap-2 items-center surface-sunken rounded-lg">
             <span className="text-xs text-muted-foreground font-medium">Status:</span>
             <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
               <TabsList className="h-7">
@@ -966,7 +966,7 @@ export default function CertificatesList() {
 
       {categoryFilter === "all" ? (
         <div className="space-y-6">
-          <Card className="neu rounded-lg">
+          <Card className="surface rounded-lg">
             <CardContent className="p-0">
               <div className="px-4 py-3 border-b flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -979,7 +979,7 @@ export default function CertificatesList() {
             </CardContent>
           </Card>
 
-          <Card className="neu rounded-lg">
+          <Card className="surface rounded-lg">
             <CardContent className="p-0">
               <div className="px-4 py-3 border-b flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -993,7 +993,7 @@ export default function CertificatesList() {
           </Card>
         </div>
       ) : (
-        <Card className="neu rounded-lg">
+        <Card className="surface rounded-lg">
           <CardContent className="p-0">
             {renderTable(filteredCertificates ?? [], { isoColumns: isIsoView, showQR: !isIsoView, page, setPage, emptyLabel: "No certificates found matching your criteria." })}
           </CardContent>

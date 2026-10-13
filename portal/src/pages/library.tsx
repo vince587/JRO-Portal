@@ -626,9 +626,9 @@ function MaterialDialog({
 
 function getAccessBadge(access: Access) {
   switch (access) {
-    case "open": return <Badge variant="outline" className="bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800"><Icon name="globe" className="mr-1" size={12} /> Open</Badge>;
-    case "restricted": return <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800"><Icon name="lock" className="mr-1" size={12} /> Restricted</Badge>;
-    case "disabled": return <Badge variant="outline" className="bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-900/30 dark:text-rose-300 dark:border-rose-800"><Icon name="ban" className="mr-1" size={12} /> Disabled</Badge>;
+    case "open": return <Badge variant="outline" className="tone-success"><Icon name="globe" className="mr-1" size={12} /> Open</Badge>;
+    case "restricted": return <Badge variant="outline" className="tone-warning"><Icon name="lock" className="mr-1" size={12} /> Restricted</Badge>;
+    case "disabled": return <Badge variant="outline" className="tone-danger"><Icon name="ban" className="mr-1" size={12} /> Disabled</Badge>;
   }
 }
 

@@ -118,12 +118,12 @@ export default function Profile() {
   if (!user) return null;
 
   return (
-    <div className="space-y-6 pb-8 animate-in fade-in duration-500 max-w-2xl">
+    <div className="space-y-6 pb-8 page-enter max-w-2xl">
       <div>
         <p className="text-muted-foreground">Manage your account information and preferences.</p>
       </div>
 
-      <Card className="neu rounded-lg">
+      <Card className="surface rounded-lg">
         <CardHeader className="border-b">
           <CardTitle className="flex items-center gap-2">
             <Icon name="user" className="text-primary" size={20} />
@@ -176,7 +176,7 @@ export default function Profile() {
         </CardContent>
       </Card>
 
-      <Card className="neu rounded-lg">
+      <Card className="surface rounded-lg">
         <CardHeader className="border-b">
           <CardTitle className="flex items-center gap-2">
             <Icon name="lock" className="text-primary" size={20} />

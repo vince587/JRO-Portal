@@ -138,7 +138,7 @@ export default function HrisEmployeeDetail() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6 animate-in fade-in duration-500 p-6">
+      <div className="space-y-6 page-enter p-6">
         <Skeleton className="h-8 w-48" />
         <div className="grid md:grid-cols-3 gap-6">
           <div className="md:col-span-2 space-y-6">
@@ -274,11 +274,11 @@ export default function HrisEmployeeDetail() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "Regular":
-        return <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400">Regular</Badge>;
+        return <Badge variant="outline" className="tone-success">Regular</Badge>;
       case "Probationary":
-        return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400">Probationary</Badge>;
+        return <Badge variant="outline" className="tone-warning">Probationary</Badge>;
       default:
-        return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400">{status}</Badge>;
+        return <Badge variant="outline" className="tone-info">{status}</Badge>;
     }
   };
 
@@ -316,7 +316,7 @@ export default function HrisEmployeeDetail() {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 p-6">
+    <div className="space-y-6 page-enter p-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <div>
@@ -384,7 +384,7 @@ export default function HrisEmployeeDetail() {
         <TabsContent value="profile" className="space-y-4">
           <div className="grid md:grid-cols-2 gap-6">
             <div className="space-y-6">
-              <Card className="neu rounded-lg">
+              <Card className="surface rounded-lg">
                 <CardHeader className="pb-3 border-b">
                   <CardTitle className="text-base flex items-center gap-2">
                     <Icon name="user" className="text-muted-foreground" size={16} />
@@ -415,7 +415,7 @@ export default function HrisEmployeeDetail() {
                 </CardContent>
               </Card>
 
-              <Card className="neu rounded-lg">
+              <Card className="surface rounded-lg">
                 <CardHeader className="pb-3 border-b">
                   <CardTitle className="text-base flex items-center gap-2">
                     <Icon name="heart" className="text-muted-foreground" size={16} />
@@ -434,7 +434,7 @@ export default function HrisEmployeeDetail() {
             </div>
 
             <div className="space-y-6">
-              <Card className="neu rounded-lg">
+              <Card className="surface rounded-lg">
                 <CardHeader className="pb-3 border-b">
                   <CardTitle className="text-base flex items-center gap-2">
                     <Icon name="user" className="text-muted-foreground" size={16} />
@@ -449,7 +449,7 @@ export default function HrisEmployeeDetail() {
                 </CardContent>
               </Card>
 
-              <Card className="neu rounded-lg">
+              <Card className="surface rounded-lg">
                 <CardHeader className="pb-3 border-b">
                   <CardTitle className="text-base flex items-center gap-2">
                     <Icon name="file-text" className="text-muted-foreground" size={16} />
@@ -530,7 +530,7 @@ export default function HrisEmployeeDetail() {
 
         {/* Leave Tab */}
         <TabsContent value="leave" className="space-y-4">
-          <Card className="neu rounded-lg">
+          <Card className="surface rounded-lg">
             <CardHeader className="pb-3 border-b flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="text-lg flex items-center gap-2">
@@ -562,7 +562,7 @@ export default function HrisEmployeeDetail() {
                       <li key={lv.id} className="text-sm flex items-center gap-2 text-muted-foreground">
                         <Badge variant="outline">{lv.type}</Badge>
                         <span>{lv.startDate} → {lv.endDate}</span>
-                        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400">pending</Badge>
+                        <Badge variant="outline" className="tone-warning">pending</Badge>
                       </li>
                     ))}
                   </ul>
@@ -571,7 +571,7 @@ export default function HrisEmployeeDetail() {
             </CardContent>
           </Card>
 
-          <Card className="neu rounded-lg">
+          <Card className="surface rounded-lg">
             <CardHeader className="pb-3 border-b">
               <CardTitle className="text-base flex items-center gap-2">
                 <Icon name="calendar-days" className="text-muted-foreground" size={16} />
@@ -605,9 +605,9 @@ export default function HrisEmployeeDetail() {
                             <td className="p-2">{lv.daysCount}</td>
                             <td className="p-2">
                               <Badge variant="outline" className={
-                                lv.status === "approved" ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400" :
-                                lv.status === "rejected" ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400" :
-                                "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400"
+                                lv.status === "approved" ? "tone-success" :
+                                lv.status === "rejected" ? "tone-danger" :
+                                "tone-warning"
                               }>
                                 {lv.status.charAt(0).toUpperCase() + lv.status.slice(1)}
                               </Badge>
@@ -635,7 +635,7 @@ export default function HrisEmployeeDetail() {
 
         {/* Benefits Tab */}
         <TabsContent value="benefits" className="space-y-4">
-          <Card className="neu rounded-lg">
+          <Card className="surface rounded-lg">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <Icon name="heart" className="text-muted-foreground" size={20} />
@@ -655,7 +655,7 @@ export default function HrisEmployeeDetail() {
 
         {/* Tax Information Tab */}
         <TabsContent value="tax" className="space-y-4">
-          <Card className="neu rounded-lg">
+          <Card className="surface rounded-lg">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <Icon name="hash" className="text-muted-foreground" size={20} />

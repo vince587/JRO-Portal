@@ -100,7 +100,7 @@ export default function CertificateNew() {
 
   if (!canManageCertificates) {
     return (
-      <div className="space-y-6 animate-in fade-in duration-500 max-w-3xl">
+      <div className="space-y-6 page-enter max-w-3xl">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => setLocation("/certificates")}>
             <Icon name="arrow-left" size={16} />
@@ -112,7 +112,7 @@ export default function CertificateNew() {
             </h1>
           </div>
         </div>
-        <Card className="neu rounded-lg">
+        <Card className="surface rounded-lg">
           <CardContent className="py-12 text-center text-muted-foreground">
             Sorry, you don't have permission to add certificates.
           </CardContent>
@@ -122,7 +122,7 @@ export default function CertificateNew() {
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 max-w-3xl">
+    <div className="space-y-6 page-enter max-w-3xl">
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" onClick={() => setLocation("/certificates")}>
           <Icon name="arrow-left" size={16} />
@@ -136,7 +136,7 @@ export default function CertificateNew() {
         </div>
       </div>
 
-      <Card className="neu rounded-lg">
+      <Card className="surface rounded-lg">
         <CardHeader>
           <CardTitle className="text-lg">Certificate Details</CardTitle>
           <CardDescription>Fill in the information below to issue a certificate.</CardDescription>

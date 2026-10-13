@@ -305,7 +305,7 @@ export default function Login() {
           )}
 
           {/* Neomorphism card */}
-          <div className="neo-fade neu rounded-xl p-8 sm:p-10"
+          <div className="neo-fade surface rounded-xl p-8 sm:p-10"
           >
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
               {/* Email */}

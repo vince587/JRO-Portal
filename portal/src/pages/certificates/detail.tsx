@@ -436,7 +436,7 @@ export default function CertificateDetail() {
             <Skeleton className="h-4 w-32" />
           </div>
         </div>
-        <Card className="neu rounded-lg">
+        <Card className="surface rounded-lg">
           <CardContent className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {Array(6).fill(0).map((_, i) => (
@@ -577,8 +577,8 @@ export default function CertificateDetail() {
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <Card className="neu rounded-lg">
-            <CardHeader className="border-b neu-inset rounded-xl">
+          <Card className="surface rounded-lg">
+            <CardHeader className="border-b surface-sunken rounded-lg">
               <CardTitle className="text-lg flex items-center gap-2">
                 <Icon name="shield-check" className="text-amber-500" size={20} />
                 Certificate Information
@@ -879,8 +879,8 @@ export default function CertificateDetail() {
             </CardContent>
           </Card>
 
-          <Card className="neu rounded-lg">
-            <CardHeader className="border-b neu-inset rounded-xl">
+          <Card className="surface rounded-lg">
+            <CardHeader className="border-b surface-sunken rounded-lg">
               <CardTitle className="text-lg flex items-center gap-2">
                 <Icon name={category === "iso" ? "file-text" : "qr-code"} className="text-primary" size={20} />
                 {category === "iso" ? "Attachments" : "QR Code & Attachments"}

@@ -46,7 +46,7 @@ export default function AdminExpenses() {
 
       <div className="flex justify-end"><Button size="sm" onClick={openAdd}><Icon name="plus" className="mr-2" size={16} /> Add Expense</Button></div>
 
-      <Card className="neu rounded-lg"><CardContent className="p-0">
+      <Card className="surface rounded-lg"><CardContent className="p-0">
         <Table>
           <TableHeader><TableRow>
             <TableHead>Category</TableHead><TableHead>Company</TableHead><TableHead>Description</TableHead><TableHead>Amount</TableHead><TableHead>Date</TableHead><TableHead className="w-20"></TableHead>

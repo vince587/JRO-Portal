@@ -6,9 +6,9 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 const statusColor: Record<string, string> = {
-  pending: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400",
-  approved: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400",
-  rejected: "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400",
+  pending: "tone-warning",
+  approved: "tone-success",
+  rejected: "tone-danger",
 };
 
 const companyLogos: Record<string, string> = {
@@ -60,7 +60,7 @@ export default function HrisLeavePrint() {
         </Button>
       </div>
 
-      <Card className="neu rounded-lg print:shadow-none print:border print:border-gray-300 print:rounded-none" id="leave-form">
+      <Card className="surface rounded-lg print:shadow-none print:border print:border-gray-300 print:rounded-none" id="leave-form">
         <CardHeader className="text-center border-b pb-6 print:pb-4">
           <div className="flex flex-col items-center gap-3">
             {logoUrl && (

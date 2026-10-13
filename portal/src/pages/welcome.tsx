@@ -51,7 +51,7 @@ export default function Welcome() {
       style={{ background: "linear-gradient(135deg, #f8fafc 0%, #eef2f7 100%)" }}
     >
       <div
-        className="w-full max-w-md rounded-2xl overflow-hidden shadow-2xl neu"
+        className="w-full max-w-md rounded-2xl overflow-hidden shadow-2xl surface"
         style={{ backgroundColor: "#ffffff", minHeight: "420px" }}
       >
         <div className="flex flex-col items-center justify-center gap-6 px-10 py-14 text-center">

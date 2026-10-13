@@ -46,9 +46,9 @@ import {
 
 function statusBadge(status: string) {
   const cls =
-    status === "approved" ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400" :
-    status === "rejected" ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400" :
-    "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400";
+    status === "approved" ? "tone-success" :
+    status === "rejected" ? "tone-danger" :
+    "tone-warning";
   return <Badge variant="outline" className={cls}>{status.charAt(0).toUpperCase() + status.slice(1)}</Badge>;
 }
 

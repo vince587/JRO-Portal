@@ -50,6 +50,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { SaveProgressIndicator } from "@/components/upload-progress";
+import { PageHeader } from "@/components/page-header";
 
 const TYPE_LABELS: Record<string, string> = {
   info: "Info",
@@ -71,16 +72,16 @@ const AUDIENCE_LABELS: Record<string, string> = {
 };
 
 const PRIORITY_COLORS: Record<string, string> = {
-  low: "bg-slate-100 text-slate-700 border-slate-200",
-  normal: "bg-blue-100 text-blue-700 border-blue-200",
-  high: "bg-amber-100 text-amber-700 border-amber-200",
-  urgent: "bg-red-100 text-red-700 border-red-200",
+  low: "tone-neutral",
+  normal: "tone-info",
+  high: "tone-warning",
+  urgent: "tone-danger",
 };
 
 const TYPE_COLORS: Record<string, string> = {
-  info: "bg-blue-50 text-blue-700",
-  warning: "bg-amber-50 text-amber-700",
-  announcement: "bg-emerald-50 text-emerald-700",
+  info: "tone-info",
+  warning: "tone-warning",
+  announcement: "tone-success",
 };
 
 const CreateAnnouncementSchema = z.object({
@@ -222,21 +223,20 @@ export default function Announcements() {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <p className="text-muted-foreground">
-            Manage and broadcast announcements to the team.
-          </p>
-        </div>
-        {isAdmin && (
-          <Button onClick={() => { setEditingId(null); form.reset(); setDialogOpen(true); }}>
-            <Icon name="plus" className="mr-2" size={16} /> New Announcement
-          </Button>
-        )}
-      </div>
+    <div className="space-y-6 page-enter">
+      <PageHeader
+        title="Announcements"
+        description="Manage and broadcast announcements to the team."
+        actions={
+          isAdmin ? (
+            <Button onClick={() => { setEditingId(null); form.reset(); setDialogOpen(true); }}>
+              <Icon name="plus" className="mr-2" size={16} /> New Announcement
+            </Button>
+          ) : undefined
+        }
+      />
 
-      <Card className="neu rounded-lg">
+      <Card className="surface rounded-lg">
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Icon name="megaphone" className="text-primary" size={18} />
@@ -247,7 +247,7 @@ export default function Announcements() {
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="p-4 border-b neu-inset rounded-xl flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+          <div className="p-4 border-b surface-sunken rounded-lg flex flex-col sm:flex-row gap-3 items-start sm:items-center">
             <div className="relative flex-1 w-full">
               <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
               <Input
@@ -279,7 +279,7 @@ export default function Announcements() {
                       <div className="flex items-center gap-2 flex-wrap mb-1">
                         <h3 className="text-sm font-semibold text-foreground truncate">{item.title}</h3>
                         {item.isPinned && (
-                          <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-200">Pinned</Badge>
+                          <Badge variant="outline" className="text-[10px] tone-warning">Pinned</Badge>
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{item.body}</p>

@@ -4,7 +4,7 @@ import { Icon } from "@/components/ui/icon"
 export default function NotFound() {
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
-      <Card className="w-full max-w-md mx-4 neu rounded-lg">
+      <Card className="w-full max-w-md mx-4 surface rounded-lg">
         <CardContent className="pt-6">
           <div className="flex mb-4 gap-2">
             <Icon name="alert-circle" className="text-muted-foreground" size={32} />

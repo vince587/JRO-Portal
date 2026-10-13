@@ -61,7 +61,7 @@ async function saveToStorage(
   return { url, storedAs };
 }
 
-router.post("/upload/contract/:id", requireAnyPermission("canAccessJmcs", "canAccessSis"), handleUpload, async (req, res): Promise<void> => {
+router.post("/upload/contract/:id", requireAnyPermission("canAccessJmcs", "canAccessSis", "canManageContracts"), handleUpload, async (req, res): Promise<void> => {
   const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   if (!req.file) { res.status(400).json({ error: "No file uploaded" }); return; }
   const contract = await getDoc<ContractDoc>("contracts", id);

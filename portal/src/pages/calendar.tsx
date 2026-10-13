@@ -44,6 +44,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { SaveProgressIndicator } from "@/components/upload-progress";
+import { CategoryChip, categoryChipStyle } from "@/components/category-chip";
 
 function toLocalDateStr(d: string) {
   const p = parseISO(d);
@@ -415,28 +416,16 @@ export default function Calendar() {
     setEventDialogOpen(true);
   };
 
-  const getEventTypeColor = (type: CalendarEventEventType) => {
-    switch (type) {
-      case "meeting": return "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800";
-      case "deadline": return "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800";
-      case "training": return "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800";
-      case "review": return "bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-800";
-      case "audit": return "bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800";
-      case "lead-audit": return "bg-fuchsia-100 text-fuchsia-800 border-fuchsia-200 dark:bg-fuchsia-900/30 dark:text-fuchsia-300 dark:border-fuchsia-800";
-      case "internal-audit": return "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800";
-      default: return "bg-slate-100 text-slate-800 border-border dark:bg-slate-800 dark:text-muted-foreground/60 dark:border-slate-700";
-    }
-  };
-
   const getEffectiveType = (event: { title?: string; eventType: CalendarEventEventType }): CalendarEventEventType =>
     autoInferType(event.title) ?? event.eventType;
 
+  /** Attendance state, not a category: confirmed is good, cancelled is not. */
   const getStatusColor = (status?: string | null) => {
     switch (status) {
-      case "confirmed": return "bg-emerald-500 text-white border-emerald-500";
-      case "tentative": return "bg-amber-500 text-white border-amber-500";
-      case "cancelled": return "bg-rose-500 text-white border-rose-500 line-through";
-      default: return "bg-slate-400 text-white border-slate-400";
+      case "confirmed": return "tone-success";
+      case "tentative": return "tone-warning";
+      case "cancelled": return "tone-danger line-through";
+      default: return "tone-neutral";
     }
   };
 
@@ -456,8 +445,8 @@ export default function Calendar() {
     const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
     return (
-      <div className="neu rounded-lg overflow-hidden">
-        <div className="grid grid-cols-7 border-b neu-inset rounded-xl">
+      <div className="surface rounded-lg overflow-hidden">
+        <div className="grid grid-cols-7 border-b surface-sunken rounded-lg">
           {weekDays.map(day => (
             <div key={day} className="py-2 text-center text-xs font-semibold text-muted-foreground capitalize tracking-wider">
               {day}
@@ -495,7 +484,8 @@ export default function Calendar() {
                              <div 
                                key={event.id} 
                                 onClick={e => { e.stopPropagation(); if (canEdit) openEditEvent(event); }}
-                               className={`text-[10px] px-1.5 py-1 rounded border font-medium break-words whitespace-normal leading-tight ${canEdit ? 'cursor-pointer hover:opacity-80' : ''} ${getEventTypeColor(getEffectiveType(event))}`}
+                               className={`text-[10px] px-1.5 py-1 rounded border font-medium break-words whitespace-normal leading-tight ${canEdit ? 'cursor-pointer hover:opacity-80' : ''}`}
+                               style={categoryChipStyle(getEffectiveType(event))}
                                title={`${event.title} — ${getStatusLabel(event.status)}`}
                              >
                               {!event.allDay && <span className="mr-1 opacity-70">{format(parseISO(event.startDate), 'HH:mm')}</span>}
@@ -527,7 +517,7 @@ export default function Calendar() {
       return (
         <div className="space-y-4">
           {Array(4).fill(0).map((_, i) => (
-            <Card key={i} className="neu rounded-lg">
+            <Card key={i} className="surface rounded-lg">
               <CardContent className="p-4 flex gap-4">
                 <Skeleton className="h-16 w-16 rounded" />
                 <div className="space-y-2 flex-1">
@@ -546,7 +536,7 @@ export default function Calendar() {
 
     if (currentMonthEvents.length === 0) {
       return (
-        <Card className="neu rounded-lg">
+        <Card className="surface rounded-lg">
           <CardContent className="h-64 flex flex-col items-center justify-center text-center">
             <Icon name="calendar" className="text-muted-foreground/30 mb-4" size={48} />
             <p className="text-lg font-medium">No events this month</p>
@@ -561,7 +551,7 @@ export default function Calendar() {
         {currentMonthEvents.map(event => {
           const startDate = parseISO(event.startDate);
            return (
-              <Card key={event.id} className={`neu rounded-lg overflow-hidden ${canEdit ? 'cursor-pointer hover:bg-muted/10 transition-colors' : ''}`} onClick={() => { if (canEdit) openEditEvent(event); }}>
+              <Card key={event.id} className={`surface rounded-lg overflow-hidden ${canEdit ? 'cursor-pointer hover:bg-muted/10 transition-colors' : ''}`} onClick={() => { if (canEdit) openEditEvent(event); }}>
               <div className="flex flex-col sm:flex-row">
                 <div className="w-full sm:w-32 bg-muted/30 p-4 flex sm:flex-col items-center justify-center border-b sm:border-b-0 sm:border-r gap-2 sm:gap-0">
                   <span className="text-sm font-bold text-muted-foreground capitalize">{format(startDate, 'MMM')}</span>
@@ -575,9 +565,11 @@ export default function Calendar() {
                       <Badge variant="outline" className={`capitalize ${getStatusColor(event.status)}`}>
                         {getStatusLabel(event.status)}
                       </Badge>
-                      <Badge variant="outline" className={`capitalize ${getEventTypeColor(getEffectiveType(event))}`}>
-                        {getTypeLabel(getEffectiveType(event))}
-                      </Badge>
+                      <CategoryChip
+                        category={getEffectiveType(event)}
+                        label={getTypeLabel(getEffectiveType(event))}
+                        className="capitalize"
+                      />
                     </div>
                   </div>
                   {event.description && (
@@ -612,18 +604,18 @@ export default function Calendar() {
   };
 
   const typeLegend = [
-    { key: "meeting", label: "Meeting", cls: getEventTypeColor("meeting") },
-    { key: "deadline", label: "Deadline", cls: getEventTypeColor("deadline") },
-    { key: "training", label: "Training", cls: getEventTypeColor("training") },
-    { key: "review", label: "Review", cls: getEventTypeColor("review") },
-    { key: "audit", label: "Audit", cls: getEventTypeColor("audit") },
-    { key: "internal-audit", label: "Internal Audit", cls: getEventTypeColor("internal-audit") },
-    { key: "lead-audit", label: "Lead Audit", cls: getEventTypeColor("lead-audit") },
-    { key: "other", label: "Other", cls: getEventTypeColor("other") },
+    { key: "meeting", label: "Meeting" },
+    { key: "deadline", label: "Deadline" },
+    { key: "training", label: "Training" },
+    { key: "review", label: "Review" },
+    { key: "audit", label: "Audit" },
+    { key: "internal-audit", label: "Internal Audit" },
+    { key: "lead-audit", label: "Lead Audit" },
+    { key: "other", label: "Other" },
   ] as const;
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 max-w-6xl mx-auto" id="calendar-page">
+    <div className="space-y-6 page-enter max-w-6xl mx-auto" id="calendar-page">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <p className="text-muted-foreground">
@@ -646,14 +638,18 @@ export default function Calendar() {
 
       <div className="flex flex-wrap items-center gap-2 no-print">
         {typeLegend.map(s => (
-          <span key={s.key} className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-md border capitalize ${s.cls}`}>
+          <span
+            key={s.key}
+            className="inline-flex items-center gap-1.5 rounded-md border border-transparent px-2 py-1 text-xs font-medium capitalize"
+            style={categoryChipStyle(s.key)}
+          >
             <span className="h-2 w-2 rounded-full bg-white opacity-80" />
             {s.label}
           </span>
         ))}
       </div>
 
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-card p-4 rounded-2xl border neu no-print">
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-card p-4 rounded-2xl border surface no-print">
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" onClick={prevMonth}>
             <Icon name="chevron-left" size={16} />

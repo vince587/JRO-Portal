@@ -95,7 +95,7 @@ function computeLate(clockIn: string | null, isSaturday: boolean, official: Offi
   const arrival = isSaturday ? official.saturday.arrival : official.regular.arrival;
   const [oh, om] = arrival.split(":").map(Number);
   const clockInDate = parseISO(clockIn);
-  const clockInMinutes = clockInDate.getHours() * 60 + clockInDate.getMinutes();
+  const clockInMinutes = clockInDate.getUTCHours() * 60 + clockInDate.getUTCMinutes();
   const officialMinutes = oh * 60 + om;
   const diff = clockInMinutes - officialMinutes - LATE_GRACE_MINUTES;
   if (diff <= 0) return "0h 0m";
@@ -220,7 +220,7 @@ export default function DailyTimeRecord() {
       if (rec?.clockIn) {
         const isSat = getDay(day) === 6;
         const [oh, om] = (isSat ? effectiveOfficial.saturday.arrival : effectiveOfficial.regular.arrival).split(":").map(Number);
-        const clockInMinutes = parseISO(rec.clockIn).getHours() * 60 + parseISO(rec.clockIn).getMinutes();
+        const clockInMinutes = parseISO(rec.clockIn).getUTCHours() * 60 + parseISO(rec.clockIn).getUTCMinutes();
         const officialMinutes = oh * 60 + om;
         const diff = clockInMinutes - officialMinutes - LATE_GRACE_MINUTES;
         if (diff > 0) total += diff;
@@ -275,7 +275,7 @@ export default function DailyTimeRecord() {
         </Button>
       </div>
 
-      <Card className="neu rounded-lg">
+      <Card className="surface rounded-lg">
         <CardContent className="pt-4 pb-2">
           <div className="flex flex-wrap items-center gap-4 mb-2">
             <div className="flex items-center gap-2">
@@ -357,7 +357,7 @@ export default function DailyTimeRecord() {
       </Card>
 
       {!targetEmployee && employeeId && !employeeLoading && (
-        <Card className="neu rounded-lg">
+        <Card className="surface rounded-lg">
           <CardContent className="pt-6 pb-6 text-center">
             <Icon name="shield-alert" className="text-destructive mb-4" size={48} />
             <h2 className="text-xl font-bold">Access Denied</h2>
@@ -367,7 +367,7 @@ export default function DailyTimeRecord() {
       )}
 
       {(employeeLoading || recordsLoading) && (
-        <Card className="neu rounded-lg">
+        <Card className="surface rounded-lg">
           <CardContent className="pt-6 pb-6 text-center">
             <p className="text-muted-foreground">Loading daily time record…</p>
           </CardContent>
@@ -375,7 +375,7 @@ export default function DailyTimeRecord() {
       )}
 
       {targetEmployee && !employeeLoading && !recordsLoading && (
-        <Card className="neu rounded-lg print:shadow-none print:border print:border-gray-300 print:rounded-none" id="daily-time-record">
+        <Card className="surface rounded-lg print:shadow-none print:border print:border-gray-300 print:rounded-none" id="daily-time-record">
           <CardContent className="pt-4 print:pt-2">
             {/* Header */}
             <div className="text-center mb-4">

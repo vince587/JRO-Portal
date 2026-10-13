@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import { format } from "date-fns";
 import { Icon } from "@/components/ui/icon"
@@ -43,15 +43,40 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
+import { StatTile } from "@/components/stat-tile";
+import { PageHeader } from "@/components/page-header";
 
 export default function ProjectsList() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"ALL" | ProjectStatus>("ALL");
   const [selectedIds, setSelectedIds] = useState<Set<string | number>>(new Set());
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+
+  const handleExport = async (url: string, filename: string) => {
+    setExporting(true);
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`Failed to export ${filename}`);
+      const blob = await res.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = downloadUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(downloadUrl);
+      toast({ title: "Project summary exported" });
+    } catch {
+      toast({ title: `Failed to export ${filename}`, variant: "destructive" });
+    } finally {
+      setExporting(false);
+    }
+  };
 
   function toggleRow(id: string | number) {
     setSelectedIds(prev => {
@@ -115,18 +140,41 @@ export default function ProjectsList() {
     );
   });
 
+  const clientSummary = useMemo(() => {
+    const byClient = new Map<string, { name: string; total: number; active: number; completed: number; budget: number; progress: number }>();
+    for (const p of projects ?? []) {
+      const key = (p.clientName || "").trim() || "(Internal)";
+      const rec = byClient.get(key) || { name: key, total: 0, active: 0, completed: 0, budget: 0, progress: 0 };
+      rec.total += 1;
+      if (p.status === "active") rec.active += 1;
+      if (p.status === "completed") rec.completed += 1;
+      rec.budget += Number(p.budget) || 0;
+      rec.progress += Number(p.progress) || 0;
+      byClient.set(key, rec);
+    }
+    return Array.from(byClient.values())
+      .map(rec => ({ ...rec, progress: rec.total ? Math.round(rec.progress / rec.total) : 0 }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [projects]);
+
+  const formatBudget = (v: number) =>
+    v.toLocaleString("en-US", { style: "currency", currency: "PHP", maximumFractionDigits: 2 });
+
+  const countByStatus = (status: ProjectStatus) =>
+    (projects ?? []).filter(p => p.status === status).length;
+
   const getStatusBadge = (status: ProjectStatus) => {
     switch (status) {
       case 'planning':
         return <Badge variant="outline" className="bg-muted/60 text-foreground border-border dark:bg-slate-900/20 dark:text-muted-foreground/80 dark:border-slate-900/50">Planning</Badge>;
       case 'active':
-        return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-900/50">Active</Badge>;
+        return <Badge variant="outline" className="tone-info">Active</Badge>;
       case 'on_hold':
-        return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-900/50">On Hold</Badge>;
+        return <Badge variant="outline" className="tone-warning">On Hold</Badge>;
       case 'completed':
-        return <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-900/50">Completed</Badge>;
+        return <Badge variant="outline" className="tone-success">Completed</Badge>;
       case 'cancelled':
-        return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-900/50">Cancelled</Badge>;
+        return <Badge variant="outline" className="tone-danger">Cancelled</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -135,44 +183,100 @@ export default function ProjectsList() {
   const getPriorityColor = (priority?: ProjectPriority) => {
     switch (priority) {
       case 'low': return "text-muted-foreground bg-slate-100 dark:bg-slate-800";
-      case 'medium': return "text-blue-500 bg-blue-100 dark:bg-blue-900/40";
-      case 'high': return "text-amber-500 bg-amber-100 dark:bg-amber-900/40";
-      case 'critical': return "text-red-500 bg-red-100 dark:bg-red-900/40";
+      case 'medium': return "tone-info";
+      case 'high': return "tone-warning";
+      case 'critical': return "tone-danger";
       default: return "text-muted-foreground bg-slate-100 dark:bg-slate-800";
     }
   };
 
+  const canCreateProject = (user?.canAccessProjects && user?.canAccessJmcs) || !!user?.canAccessDevelopers || user?.roles?.some(r => ["admin", "ADMIN", "IT"].includes(r)) || ["admin", "ADMIN", "IT"].includes(user?.role ?? "");
+
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <p className="text-muted-foreground">
-            Manage operational deployments and deliverables.
-          </p>
-        </div>
-        {(user?.canAccessProjects && user?.canAccessJmcs) || user?.roles?.some(r => ["admin", "ADMIN", "IT"].includes(r)) || ["admin", "ADMIN", "IT"].includes(user?.role ?? "") ? (
-          <Button asChild variant="success">
-            <Link href="/projects/new" className="flex items-center">
-              <Icon name="plus" className="mr-2" size={16} />
-              New Project
-            </Link>
-          </Button>
-        ) : (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button disabled>
+    <div className="space-y-6 page-enter">
+      <PageHeader
+        title="Projects"
+        description="Manage operational deployments and deliverables."
+        actions={
+          canCreateProject ? (
+            <Button asChild>
+              <Link href="/projects/new" className="flex items-center">
                 <Icon name="plus" className="mr-2" size={16} />
                 New Project
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>sorry you dont have permission to create projects</p>
-            </TooltipContent>
-          </Tooltip>
-        )}
-      </div>
+              </Link>
+            </Button>
+          ) : (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button disabled>
+                  <Icon name="plus" className="mr-2" size={16} />
+                  New Project
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>sorry you dont have permission to create projects</p>
+              </TooltipContent>
+            </Tooltip>
+          )
+        }
+      />
 
-      <div className="p-4 neu-inset rounded-xl flex flex-col md:flex-row gap-4 items-center justify-between">
+      {clientSummary.length > 0 && (
+        <Card className="surface rounded-lg">
+          <CardHeader className="border-b bg-muted/20 flex flex-row items-center justify-between gap-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Icon name="chart-pie" className="text-primary" size={18} />
+              Project Summary
+            </CardTitle>
+            <Button size="sm" onClick={() => handleExport("/api/projects/summary-excel", "project-summary-per-client.xlsx")} disabled={exporting}>
+              <Icon name="file-spreadsheet" className="mr-2" size={16} />
+              {exporting ? "Exporting..." : "Export Excel (per client)"}
+            </Button>
+          </CardHeader>
+          <CardContent className="p-4 space-y-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+              <StatTile label="Total Projects" value={projects?.length ?? 0} icon="briefcase" tone="neutral" />
+              <StatTile label="Active" value={countByStatus("active")} tone="info" />
+              <StatTile label="Planning" value={countByStatus("planning")} tone="neutral" />
+              <StatTile label="Completed" value={countByStatus("completed")} tone="success" />
+              <StatTile label="On Hold" value={countByStatus("on_hold")} tone="warning" />
+            </div>
+            {clientSummary.length > 0 && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead><tr className="border-b bg-muted/30">
+                    <th className="text-left px-3 py-2 font-medium text-muted-foreground">Client</th>
+                    <th className="text-left px-3 py-2 font-medium text-muted-foreground">Projects</th>
+                    <th className="text-left px-3 py-2 font-medium text-muted-foreground">Active</th>
+                    <th className="text-left px-3 py-2 font-medium text-muted-foreground">Completed</th>
+                    <th className="text-left px-3 py-2 font-medium text-muted-foreground">Total Budget</th>
+                    <th className="text-left px-3 py-2 font-medium text-muted-foreground">Avg Progress</th>
+                  </tr></thead>
+                  <tbody>
+                    {clientSummary.map(c => (
+                      <tr key={c.name} className="border-b last:border-0 hover:bg-muted/20">
+                        <td className="px-3 py-2 font-medium">{c.name}</td>
+                        <td className="px-3 py-2">{c.total}</td>
+                        <td className="px-3 py-2 tabular text-tone-info-fg">{c.active}</td>
+                        <td className="px-3 py-2 tabular text-tone-success-fg">{c.completed}</td>
+                        <td className="px-3 py-2 tabular">{formatBudget(c.budget)}</td>
+                        <td className="px-3 py-2">
+                          <div className="flex items-center gap-2">
+                            <Progress value={c.progress} className="h-1.5 w-20" />
+                            <span className="text-xs text-muted-foreground">{c.progress}%</span>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="p-4 surface-sunken rounded-lg flex flex-col md:flex-row gap-4 items-center justify-between">
         <div className="flex items-center gap-2 pr-3 mr-1 border-r">
           <Checkbox
             checked={
@@ -212,7 +316,7 @@ export default function ProjectsList() {
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {Array(6).fill(0).map((_, i) => (
-            <Card key={i} className="h-64 neu rounded-lg">
+            <Card key={i} className="h-64 surface rounded-lg">
               <CardContent className="p-6 h-full flex flex-col justify-between">
                 <div>
                   <div className="flex justify-between items-start mb-4">
@@ -234,7 +338,7 @@ export default function ProjectsList() {
           ))}
         </div>
       ) : filteredProjects?.length === 0 ? (
-        <Card className="neu rounded-lg">
+        <Card className="surface rounded-lg">
           <CardContent className="h-64 flex flex-col items-center justify-center text-center">
             <Icon name="briefcase" className="text-muted-foreground/30 mb-4" size={48} />
             <p className="text-lg font-medium">No projects found</p>
@@ -269,7 +373,7 @@ export default function ProjectsList() {
           )}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProjects?.map(project => (
-              <Card key={project.id} className="flex flex-col hover:border-primary/50 transition-colors group relative overflow-hidden neu rounded-lg">
+              <Card key={project.id} className="flex flex-col hover:border-primary/50 transition-colors group relative overflow-hidden surface rounded-lg">
                 <div className="absolute top-3 left-3 z-10 bg-background/80 backdrop-blur-sm rounded p-0.5">
                   <Checkbox
                     checked={selectedIds.has(project.id)}

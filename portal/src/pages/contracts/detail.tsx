@@ -217,7 +217,7 @@ export default function ContractDetail() {
             <Skeleton className="h-4 w-32" />
           </div>
         </div>
-        <Card className="neu rounded-lg">
+        <Card className="surface rounded-lg">
           <CardContent className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {Array(6).fill(0).map((_, i) => (
@@ -314,7 +314,7 @@ export default function ContractDetail() {
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <Card className="neu rounded-lg">
+          <Card className="surface rounded-lg">
             <CardHeader className="border-b border-border">
               <CardTitle className="text-lg flex items-center gap-2">
                 <Icon name="file-text" className="text-primary" size={20} />
@@ -583,7 +583,7 @@ export default function ContractDetail() {
 
       {!isNew && contract && (
         <div className="space-y-6">
-          <Card className="neu rounded-lg">
+          <Card className="surface rounded-lg">
             <CardHeader className="border-b">
               <CardTitle className="text-base flex items-center gap-2">
                 <Icon name="file-text" className="text-primary" size={16} />
@@ -599,7 +599,7 @@ export default function ContractDetail() {
           </Card>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card className="neu rounded-lg">
+            <Card className="surface rounded-lg">
               <CardHeader className="border-b">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Icon name="rotate-ccw" className="text-primary" size={16} />
@@ -614,7 +614,7 @@ export default function ContractDetail() {
               </CardContent>
             </Card>
 
-            <Card className="neu rounded-lg">
+            <Card className="surface rounded-lg">
               <CardHeader className="border-b">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Icon name="history" className="text-primary" size={16} />

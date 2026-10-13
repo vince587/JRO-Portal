@@ -13,11 +13,11 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  planning: "bg-blue-100 text-blue-800",
-  active: "bg-emerald-100 text-emerald-800",
-  on_hold: "bg-amber-100 text-amber-800",
-  completed: "bg-green-100 text-green-800",
-  cancelled: "bg-red-100 text-red-800",
+  planning: "tone-info",
+  active: "tone-success",
+  on_hold: "tone-warning",
+  completed: "tone-success",
+  cancelled: "tone-danger",
 };
 
 export default function ClientProgress() {
@@ -43,7 +43,7 @@ export default function ClientProgress() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
-        <Card className="w-full max-w-2xl neu rounded-lg">
+        <Card className="w-full max-w-2xl surface rounded-lg">
           <CardContent className="p-8 space-y-4">
             <Skeleton className="h-8 w-48" />
             <Skeleton className="h-4 w-32" />
@@ -58,7 +58,7 @@ export default function ClientProgress() {
   if (error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md text-center neu rounded-lg">
+        <Card className="w-full max-w-md text-center surface rounded-lg">
           <CardContent className="p-8">
             <div className="text-5xl mb-4">🔒</div>
             <h2 className="text-xl font-bold mb-2">Access Denied</h2>
@@ -72,7 +72,7 @@ export default function ClientProgress() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       <div className="max-w-3xl mx-auto p-4 sm:p-8">
-        <Card className="overflow-hidden border-0 shadow-lg neu rounded-lg">
+        <Card className="overflow-hidden border-0 shadow-lg surface rounded-lg">
           <div className="h-2 bg-gradient-to-r from-blue-500 via-emerald-500 to-amber-500" />
           <CardHeader className="border-b bg-white pb-6">
             <div className="flex items-center justify-between">

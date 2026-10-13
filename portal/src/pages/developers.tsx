@@ -532,15 +532,25 @@ export default function Developers() {
 
   const departments = [...new Set(users?.map(u => u.department).filter(Boolean))] as string[];
 
+  /**
+   * Role is a rank, so it earns a status tone. Permission flags further down do
+   * not - they are a checklist, and colour-coding them only adds noise, so they
+   * all share one neutral chip.
+   */
   const getRoleBadge = (role: string) => {
-    switch (role) {
-      case 'ADMIN': return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 flex items-center gap-1 dark:bg-red-900/20 dark:text-red-400 dark:border-red-900/50"><Icon name="shield-alert" size={12} /> ADMIN</Badge>;
-      case 'IT': return <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 flex items-center gap-1 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-900/50"><Icon name="code" size={12} /> IT</Badge>;
-      case 'admin': return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 flex items-center gap-1 dark:bg-red-900/20 dark:text-red-400 dark:border-red-900/50"><Icon name="shield-alert" size={12} /> Admin</Badge>;
-      case 'officer': return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 flex items-center gap-1 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-900/50"><Icon name="shield" size={12} /> Officer</Badge>;
-      case 'staff': return <Badge variant="outline" className="bg-muted/60 text-foreground border-border flex items-center gap-1 dark:bg-slate-800 dark:text-muted-foreground/60 dark:border-slate-700"><Icon name="user" size={12} /> Staff</Badge>;
-      default: return <Badge variant="outline">{role}</Badge>;
-    }
+    const icon = role === 'ADMIN' || role === 'admin' ? "shield-alert"
+      : role === 'IT' ? "code"
+      : role === 'officer' ? "shield"
+      : "user";
+    const tone = role === 'ADMIN' || role === 'admin' ? "tone-danger"
+      : role === 'IT' ? "tone-info"
+      : role === 'officer' ? "tone-info"
+      : "tone-neutral";
+    return (
+      <Badge variant="outline" className={`${tone} flex items-center gap-1`}>
+        <Icon name={icon} size={12} /> {role}
+      </Badge>
+    );
   };
   const getRolesDisplay = (user: { role: string; roles?: string[] }) => {
     const roles = user.roles?.length ? user.roles : [user.role];
@@ -563,7 +573,7 @@ export default function Developers() {
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-6 page-enter">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <p className="text-muted-foreground">Manage system access, user accounts, and employee permissions.</p>
@@ -602,9 +612,9 @@ export default function Developers() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
-        <Card className="md:col-span-2 neu rounded-lg">
+        <Card className="md:col-span-2 surface rounded-lg">
           <CardContent className="p-0">
-            <div className="p-4 border-b bg-muted/20 neu-inset rounded-xl">
+            <div className="p-4 border-b bg-muted/20 surface-sunken rounded-lg">
               <div className="flex flex-col sm:flex-row gap-3">
                 <div className="relative flex-1">
                   <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
@@ -673,15 +683,18 @@ export default function Developers() {
                       <TableCell className="hidden sm:table-cell font-medium text-sm text-muted-foreground">{user.department === "Both" ? "SIS & JMCS" : (user.department || "—")}</TableCell>
                       <TableCell>
                         <div className="flex gap-1 flex-wrap">
-                          {user.canAccessSis && <Badge variant="outline" className="text-[10px] h-5 bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400">SIS</Badge>}
-                          {user.canAccessJmcs && <Badge variant="outline" className="text-[10px] h-5 bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400">JMCS</Badge>}
-                          {user.canEditCalendar && <Badge variant="outline" className="text-[10px] h-5 bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-400">Cal</Badge>}
-                          {user.canEditTrainingProposal && <Badge variant="outline" className="text-[10px] h-5 bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400">TP</Badge>}
-                          {user.canManageContracts && <Badge variant="outline" className="text-[10px] h-5 bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-900/20 dark:text-rose-400">MC</Badge>}
-                          {user.canManageCertificates && <Badge variant="outline" className="text-[10px] h-5 bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-900/20 dark:text-violet-400">MCert</Badge>}
-                          {user.canAccessProjects && <Badge variant="outline" className="text-[10px] h-5 bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-900/20 dark:text-indigo-400">Proj</Badge>}
-                          {user.canAccessAdmin && <Badge variant="outline" className="text-[10px] h-5 bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-400">Admin</Badge>}
-                          {user.canAccessDevelopers && <Badge variant="outline" className="text-[10px] h-5 bg-slate-700 text-white border-slate-700 dark:bg-slate-300 dark:text-slate-800 dark:border-slate-300">Dev</Badge>}
+                          {/* Permission flags are a checklist, not a ranking.
+                              One neutral chip for all of them; colour here would
+                              imply a hierarchy that does not exist. */}
+                          {user.canAccessSis && <Badge variant="outline" className="tone-neutral h-5 text-[10px]">SIS</Badge>}
+                          {user.canAccessJmcs && <Badge variant="outline" className="tone-neutral h-5 text-[10px]">JMCS</Badge>}
+                          {user.canEditCalendar && <Badge variant="outline" className="tone-neutral h-5 text-[10px]">Cal</Badge>}
+                          {user.canEditTrainingProposal && <Badge variant="outline" className="tone-neutral h-5 text-[10px]">TP</Badge>}
+                          {user.canManageContracts && <Badge variant="outline" className="tone-neutral h-5 text-[10px]">MC</Badge>}
+                          {user.canManageCertificates && <Badge variant="outline" className="tone-neutral h-5 text-[10px]">MCert</Badge>}
+                          {user.canAccessProjects && <Badge variant="outline" className="tone-neutral h-5 text-[10px]">Proj</Badge>}
+                          {user.canAccessAdmin && <Badge variant="outline" className="tone-neutral h-5 text-[10px]">Admin</Badge>}
+                          {user.canAccessDevelopers && <Badge variant="outline" className="tone-neutral h-5 text-[10px]">Dev</Badge>}
                           {!user.canAccessSis && !user.canAccessJmcs && !user.canEditCalendar && !user.canEditTrainingProposal && !user.canManageContracts && !user.canManageCertificates && !user.canAccessProjects && !user.canAccessAdmin && !user.canAccessDevelopers && (
                             <span className="text-xs text-muted-foreground">None</span>
                           )}
@@ -689,7 +702,7 @@ export default function Developers() {
                       </TableCell>
                       <TableCell>
                         {user.isActive ? (
-                          <span className="flex items-center gap-1.5 text-sm font-medium text-emerald-600 dark:text-emerald-400"><Icon name="check-circle-2" size={16} /> Active</span>
+                          <span className="text-tone-success-fg"><Icon name="check-circle-2" size={16} /> Active</span>
                         ) : (
                           <span className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground"><Icon name="x-circle" size={16} /> Inactive</span>
                         )}
@@ -747,7 +760,7 @@ export default function Developers() {
         </Card>
 
         <div className="space-y-6">
-          <Card className="neu rounded-lg">
+          <Card className="surface rounded-lg">
             <CardHeader className="pb-3 border-b">
               <CardTitle className="text-base font-semibold">Security Policies</CardTitle>
             </CardHeader>
@@ -767,7 +780,7 @@ export default function Developers() {
               <Button variant="outline" className="w-full mt-2" asChild><a href="/activity">Review Activity Log</a></Button>
             </CardContent>
           </Card>
-          <Card className="bg-primary text-primary-foreground border-none neu rounded-lg">
+          <Card className="bg-primary text-primary-foreground border-none surface rounded-lg">
             <CardHeader className="pb-2">
               <CardTitle className="text-base font-semibold flex items-center gap-2"><Icon name="shield-alert" size={16} /> IT Notice</CardTitle>
             </CardHeader>

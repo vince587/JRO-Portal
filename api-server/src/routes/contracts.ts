@@ -11,6 +11,13 @@ import {
 } from "../../lib/api-zod/index.js";
 import { requireAuth, requirePermission, requireRoleOrPermission } from "../middlewares/auth";
 import { getStorageBucket } from "../lib/firebase-db";
+import {
+  cleanText,
+  coerceContractType,
+  coerceEnum,
+  coerceDate,
+  coerceMoney,
+} from "../lib/coerce";
 import { emitChange } from "./sse";
 
 const router: IRouter = Router();
@@ -235,6 +242,220 @@ router.delete("/contracts/:id", requireRoleOrPermission(["admin", "ADMIN", "IT"]
   await deleteDoc("contracts", id);
   emitChange("contract", "deleted", id);
   res.sendStatus(204);
+});
+
+const CONTRACT_STATUSES = ["active", "pending", "completed", "expired"];
+const MAX_IMPORT_ROWS = 2000;
+
+interface RawContractRow {
+  title?: unknown;
+  contractNumber?: unknown;
+  clientName?: unknown;
+  type?: unknown;
+  status?: unknown;
+  startDate?: unknown;
+  endDate?: unknown;
+  value?: unknown;
+  description?: unknown;
+  assignedTo?: unknown;
+  date?: unknown;
+}
+
+interface NormalizedContract {
+  title: string;
+  contractNumber: string;
+  clientName: string;
+  type: "JMCS" | "SIS";
+  status: string;
+  startDate: string;
+  endDate: string;
+  value: number | null;
+  description: string | null;
+}
+
+function coerceContractStatus(v: unknown): string | null {
+  return coerceEnum(v, CONTRACT_STATUSES);
+}
+
+/** End dates default by business unit: SIS certification runs 3 years, JMCS 1. */
+function addYears(ymd: string, years: number): string {
+  const d = new Date(`${ymd}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return ymd;
+  d.setUTCFullYear(d.getUTCFullYear() + years);
+  return d.toISOString().slice(0, 10);
+}
+
+function normalizeContractRow(raw: RawContractRow, defaultType: "JMCS" | "SIS"): NormalizedContract {
+  // Type and Status are frequently swapped or mislabelled in exported sheets,
+  // so both are sniffed by value rather than trusted by header name.
+  const type = coerceContractType(raw.type) ?? coerceContractType(raw.status) ?? defaultType;
+  const status = coerceContractStatus(raw.status) ?? coerceContractStatus(raw.type) ?? "pending";
+  const startDate = coerceDate(raw.startDate) ?? coerceDate(raw.date) ?? new Date().toISOString().slice(0, 10);
+  return {
+    title: cleanText(raw.title),
+    contractNumber: cleanText(raw.contractNumber),
+    clientName: cleanText(raw.clientName),
+    type,
+    status,
+    startDate,
+    endDate: coerceDate(raw.endDate) ?? addYears(startDate, type === "SIS" ? 3 : 1),
+    value: coerceMoney(raw.value),
+    description: cleanText(raw.description) || null,
+  };
+}
+
+/** Stable identity for duplicate detection: contract number, else title+client. */
+function contractDedupeKey(c: Pick<NormalizedContract, "contractNumber" | "title" | "clientName">): string | null {
+  const number = c.contractNumber.toLowerCase().replace(/\s+/g, "");
+  if (number) return `no:${number}`;
+  const title = c.title.toLowerCase().replace(/\s+/g, " ").trim();
+  const client = c.clientName.toLowerCase().replace(/\s+/g, " ").trim();
+  if (!title && !client) return null;
+  return `tc:${title}|${client}`;
+}
+
+const ContractImportBody = z.object({
+  rows: z.array(z.record(z.string(), z.unknown())).min(1).max(MAX_IMPORT_ROWS),
+  defaultType: z.enum(["SIS", "JMCS"]).optional(),
+});
+
+/** Shared validation so preview and commit never disagree. */
+function validateContractRows(
+  rows: RawContractRow[],
+  defaultType: "JMCS" | "SIS",
+): { index: number; contract: NormalizedContract; errors: string[]; duplicateKey: string | null }[] {
+  return rows.map((raw, index) => {
+    const contract = normalizeContractRow(raw, defaultType);
+    const errors: string[] = [];
+    if (!contract.title) errors.push("Contract Name is required");
+    if (!contract.contractNumber) errors.push("Contract Number is required");
+    if (!contract.clientName) errors.push("Client Name is required");
+    if (contract.value === null) errors.push("Value is required");
+    else if (contract.value < 0) errors.push("Value cannot be negative");
+    if (contract.endDate < contract.startDate) errors.push("End Date is before Start Date");
+    return { index, contract, errors, duplicateKey: contractDedupeKey(contract) };
+  });
+}
+
+router.post("/contracts/import/preview", requirePermission("canManageContracts"), async (req, res): Promise<void> => {
+  const parsed = ContractImportBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid import payload" });
+    return;
+  }
+  const defaultType = parsed.data.defaultType ?? "JMCS";
+  const evaluated = validateContractRows(parsed.data.rows, defaultType);
+
+  const existing = await getAll<ContractDoc>("contracts");
+  const existingKeys = new Set<string>();
+  for (const c of existing) {
+    const key = contractDedupeKey(c as unknown as NormalizedContract);
+    if (key) existingKeys.add(key);
+  }
+
+  const seenInFile = new Map<string, number>();
+  const out = evaluated.map((row, i) => {
+    let duplicateOfExisting = false;
+    let duplicateOfRowIndex: number | null = null;
+    if (row.duplicateKey) {
+      if (existingKeys.has(row.duplicateKey)) duplicateOfExisting = true;
+      else if (seenInFile.has(row.duplicateKey)) duplicateOfRowIndex = seenInFile.get(row.duplicateKey)!;
+      else seenInFile.set(row.duplicateKey, i);
+    }
+    return {
+      index: row.index,
+      rowNumber: i + 2, // +1 header, +1 for 1-based display
+      contract: row.contract,
+      errors: row.errors,
+      duplicateOfExisting,
+      duplicateOfRowIndex,
+      duplicate: duplicateOfExisting || duplicateOfRowIndex !== null,
+    };
+  });
+
+  res.json({
+    rows: out,
+    summary: {
+      total: out.length,
+      valid: out.filter(r => r.errors.length === 0 && !r.duplicate).length,
+      invalid: out.filter(r => r.errors.length > 0).length,
+      duplicates: out.filter(r => r.duplicate && r.errors.length === 0).length,
+    },
+  });
+});
+
+router.post("/contracts/import", requirePermission("canManageContracts"), async (req, res): Promise<void> => {
+  const parsed = ContractImportBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid import payload" });
+    return;
+  }
+  const user = req.currentUser!;
+  const defaultType = parsed.data.defaultType ?? "JMCS";
+  const evaluated = validateContractRows(parsed.data.rows, defaultType);
+
+  const existing = await getAll<ContractDoc>("contracts");
+  const existingKeys = new Set<string>();
+  for (const c of existing) {
+    const key = contractDedupeKey(c as unknown as NormalizedContract);
+    if (key) existingKeys.add(key);
+  }
+
+  const now = new Date().toISOString();
+  const creatorName = user.fullName || user.username;
+  let imported = 0;
+  const errors: { row: number; message: string }[] = [];
+  const seenInFile = new Set<string>();
+
+  for (const row of evaluated) {
+    if (row.errors.length > 0) {
+      errors.push({ row: row.index + 2, message: row.errors.join("; ") });
+      continue;
+    }
+    // Skip contracts that already exist in Firestore or repeat within the file.
+    if (row.duplicateKey && (existingKeys.has(row.duplicateKey) || seenInFile.has(row.duplicateKey))) continue;
+    if (row.duplicateKey) seenInFile.add(row.duplicateKey);
+    const c = row.contract;
+    const created = await createDoc<ContractDoc>("contracts", {
+      title: c.title,
+      type: c.type,
+      serviceType: null,
+      status: c.status,
+      contractNumber: c.contractNumber,
+      clientName: c.clientName,
+      startDate: c.startDate,
+      endDate: c.endDate,
+      value: c.value ?? 0,
+      description: c.description,
+      assignedTo: null,
+      createdById: user.id,
+      createdByName: creatorName,
+      createdByPhotoUrl: user.photoUrl ?? null,
+      documentName: null,
+      documentStoredAs: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+    await createDoc("activity", {
+      type: "contract",
+      description: `Contract "${c.title}" was created`,
+      entityId: created.id!,
+      timestamp: now,
+    });
+    emitChange("contract", "created", created.id);
+    imported++;
+  }
+
+  if (imported > 0) {
+    await createDoc("activity", {
+      type: "contract",
+      description: `Imported ${imported} contract${imported === 1 ? "" : "s"} from Excel`,
+      entityId: null,
+      timestamp: now,
+    });
+  }
+
+  res.json({ imported, skipped: parsed.data.rows.length - imported - errors.length, errors });
 });
 
 const BulkDeleteContractsBody = z.object({

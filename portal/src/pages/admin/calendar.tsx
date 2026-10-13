@@ -22,7 +22,7 @@ export default function AdminCalendar() {
         <div><h1 className="text-2xl font-bold tracking-tight flex items-center gap-2"><Icon name="calendar-days" className="text-primary" size={24} /> Compliance Calendar</h1></div>
       </div>
 
-      <Card className="neu rounded-lg">
+      <Card className="surface rounded-lg">
         <CardHeader><CardTitle className="text-base">Upcoming Deadlines & Expiries</CardTitle><CardDescription>All compliance events sorted by urgency.</CardDescription></CardHeader>
         <CardContent className="p-0">
           {loading ? (

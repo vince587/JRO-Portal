@@ -123,12 +123,12 @@ export default function ActivityAudit() {
   };
 
   return (
-    <div className="space-y-6 pb-8 animate-in fade-in duration-500">
+    <div className="space-y-6 pb-8 page-enter">
       <div>
         <p className="text-muted-foreground">Full searchable history of all system actions.</p>
       </div>
 
-      <Card className="neu rounded-lg">
+      <Card className="surface rounded-lg">
         <CardHeader className="pb-3 border-b">
           <div className="flex flex-col md:flex-row gap-3 items-start md:items-center justify-between">
             <CardTitle className="text-lg font-semibold flex items-center gap-2">
@@ -136,7 +136,7 @@ export default function ActivityAudit() {
               System Activity
               {data && <Badge variant="secondary" className="ml-2">{data.total} entries</Badge>}
             </CardTitle>
-            <div className="flex gap-2 w-full md:w-auto neu-inset rounded-xl p-2">
+            <div className="flex gap-2 w-full md:w-auto surface-sunken rounded-lg p-2">
               <div className="relative flex-1 md:w-48">
                 <Icon name="search" className="absolute left-2.5 top-2.5 text-muted-foreground" size={16} />
                 <Input

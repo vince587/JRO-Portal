@@ -378,7 +378,7 @@ export async function getDocByField<T>(collection: string, field: string, value:
   return results[0] ?? null;
 }
 
-export async function updateDoc<T extends Record<string, unknown>>(collection: string, id: string, data: Partial<T>): Promise<void> {
+export async function updateDoc<T extends object>(collection: string, id: string, data: Partial<T>): Promise<void> {
   const db = getFirestore();
   await db.collection(collection).doc(id).update(data as FirebaseFirestore.UpdateData<FirebaseFirestore.DocumentData>);
 }

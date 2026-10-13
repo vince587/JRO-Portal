@@ -110,7 +110,7 @@ function ExcelToolbar({ endpoint, columns, data, onImported, filename }: ExcelTo
       <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImport} />
       {importProgress.importing && (
         <div className="mt-2">
-          <div className="neu-inset rounded-full h-2 overflow-hidden">
+          <div className="surface-sunken rounded-full h-2 overflow-hidden">
             <div 
               className="h-full bg-primary rounded-full transition-all duration-300" 
               style={{ width: `${(importProgress.current / importProgress.total) * 100}%` }} 
@@ -522,7 +522,7 @@ function TabCalendar() {
     })();
   }, []);
   return (
-    <Card className="neu rounded-lg">
+    <Card className="surface rounded-lg">
       <CardHeader><CardTitle className="text-base">Upcoming Deadlines & Expiries</CardTitle><CardDescription>All compliance events sorted by urgency.</CardDescription></CardHeader>
       <CardContent className="p-0">
         {loading ? (
@@ -558,7 +558,7 @@ function TabCalendar() {
 
 export default function AdminPortal() {
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-6 page-enter">
       <div className="flex items-center gap-4">
         <Button variant="ghost" asChild><Link href="/admin"><Icon name="arrow-left" className="mr-2" size={16} /> Back</Link></Button>
         <div><h1 className="text-2xl font-bold tracking-tight">Admin Portal</h1></div>

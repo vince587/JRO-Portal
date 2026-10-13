@@ -43,6 +43,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { PageHeader } from "@/components/page-header";
 
 const ALL_ROLES = ["staff", "officer", "IT", "ADMIN"] as const;
 const ALL_PERMISSIONS = ["canAccessSis", "canAccessJmcs", "canEditCalendar", "canEditTrainingProposal", "canManageContracts", "canManageCertificates", "canAccessProjects", "canAccessAdmin", "canAccessDevelopers"] as const;
@@ -186,15 +187,20 @@ export default function UsersPage() {
     });
   }, [users, searchTerm, roleFilter]);
 
+  /** Role is a rank, so it earns a status tone. Matches Developers. */
   const getRoleBadge = (role: string) => {
-    switch (role) {
-      case 'ADMIN': return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200"><Icon name="shield-alert" size={12} /> ADMIN</Badge>;
-      case 'IT': return <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200"><Icon name="code" size={12} /> IT</Badge>;
-      case 'admin': return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200"><Icon name="shield-alert" size={12} /> Admin</Badge>;
-      case 'officer': return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200"><Icon name="shield" size={12} /> Officer</Badge>;
-      case 'staff': return <Badge variant="outline">Staff</Badge>;
-      default: return <Badge variant="outline">{role}</Badge>;
-    }
+    const icon = role === 'ADMIN' || role === 'admin' ? "shield-alert"
+      : role === 'IT' ? "code"
+      : role === 'officer' ? "shield"
+      : "user";
+    const tone = role === 'ADMIN' || role === 'admin' ? "tone-danger"
+      : role === 'IT' || role === 'officer' ? "tone-info"
+      : "tone-neutral";
+    return (
+      <Badge variant="outline" className={tone}>
+        <Icon name={icon} size={12} /> {role}
+      </Badge>
+    );
   };
 
   if (!isAdmin) {
@@ -208,37 +214,38 @@ export default function UsersPage() {
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <p className="text-muted-foreground">Manage user accounts, roles, and permissions.</p>
-        </div>
-        <Dialog open={addDialogOpen} onOpenChange={(open) => {
-          setAddDialogOpen(open);
-          if (open) setFormData(EMPTY_FORM);
-        }}>
-          <DialogTrigger asChild>
-            <Button className="flex items-center"><Icon name="plus" className="mr-2" size={16} />Add User</Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Create User</DialogTitle>
-              <DialogDescription>Add a new user to the system.</DialogDescription>
-            </DialogHeader>
-            <UserForm data={formData} onChange={setFormData} />
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setAddDialogOpen(false)}>Cancel</Button>
-              <Button onClick={() => createMutation.mutate(formData)} disabled={createMutation.isPending || !formData.username || !formData.email || !formData.password}>
-                {createMutation.isPending ? "Creating..." : "Create User"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
+    <div className="space-y-6 page-enter">
+      <PageHeader
+        title="Users"
+        description="Manage user accounts, roles, and permissions."
+        actions={
+          <Dialog open={addDialogOpen} onOpenChange={(open) => {
+            setAddDialogOpen(open);
+            if (open) setFormData(EMPTY_FORM);
+          }}>
+            <DialogTrigger asChild>
+              <Button><Icon name="plus" className="mr-2" size={16} />Add User</Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Create User</DialogTitle>
+                <DialogDescription>Add a new user to the system.</DialogDescription>
+              </DialogHeader>
+              <UserForm data={formData} onChange={setFormData} />
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setAddDialogOpen(false)}>Cancel</Button>
+                <Button onClick={() => createMutation.mutate(formData)} disabled={createMutation.isPending || !formData.username || !formData.email || !formData.password}>
+                  {createMutation.isPending ? "Creating..." : "Create User"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        }
+      />
 
-      <Card className="neu rounded-lg">
+      <Card className="surface rounded-lg">
         <CardContent className="p-0">
-          <div className="p-4 border-b bg-muted/20 neu-inset rounded-xl">
+          <div className="p-4 border-b bg-muted/20 surface-sunken rounded-lg">
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="relative flex-1">
                 <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
@@ -294,7 +301,7 @@ export default function UsersPage() {
                     <TableCell className="hidden sm:table-cell font-medium text-sm text-muted-foreground">{user.department || "—"}</TableCell>
                     <TableCell>
                       {user.isActive ? (
-                        <span className="flex items-center gap-1.5 text-sm font-medium text-emerald-600 dark:text-emerald-400"><Icon name="check-circle-2" size={16} /> Active</span>
+                        <span className="flex items-center gap-1.5 text-sm font-medium text-tone-success-fg"><Icon name="check-circle-2" size={16} /> Active</span>
                       ) : (
                         <span className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground"><Icon name="x-circle" size={16} /> Inactive</span>
                       )}

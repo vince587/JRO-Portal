@@ -10,11 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import TutorialOverlay from "@/components/tutorial-overlay";
-import { Input } from "@/components/ui/input";
 import { Icon } from "@/components/ui/icon";
 import { useLogout } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
@@ -26,9 +22,8 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
+import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 import {
-  Command,
   CommandDialog,
   CommandEmpty,
   CommandGroup,
@@ -148,16 +143,33 @@ function useSessionTimeout() {
 /* ───────────────────────── Sidebar pieces ───────────────────────── */
 
 function SidebarLogo() {
+  const [imgError, setImgError] = useState(false);
   return (
-    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg overflow-hidden shadow-sm">
-      <img src="/logo.png" alt="JMCS" className="h-full w-full object-contain" />
+    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-primary overflow-hidden">
+      {imgError ? (
+        <Icon name="target" size={24} className="text-primary" />
+      ) : (
+        <img
+          src="/logo.png"
+          alt="JMCS"
+          className="h-full w-full object-contain p-1"
+          onError={() => setImgError(true)}
+        />
+      )}
     </div>
   );
 }
 
-function SidebarBadge({ value }: { value: number | string }) {
+function SidebarBadge({ value, onBrand = false }: { value: number | string; onBrand?: boolean }) {
   return (
-    <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary/10 px-1.5 text-xs font-medium text-primary dark:text-sidebar-accent-foreground">
+    <span
+      className={[
+        "ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-medium tabular",
+        onBrand
+          ? "bg-primary-foreground/20 text-primary-foreground"
+          : "bg-primary/10 text-primary",
+      ].join(" ")}
+    >
       {value}
     </span>
   );
@@ -178,8 +190,8 @@ function SidebarNavItem({ item, active, collapsed }: { item: NavItem; active: bo
         <Link
           href={item.url}
           className={[
-            "relative flex h-9 w-9 items-center justify-center rounded-md transition-colors duration-150",
-            active ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
+            "relative flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-150",
+            active ? "bg-primary text-white shadow-xs" : "text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-foreground",
           ].join(" ")}
         >
           <Icon name={item.icon} size={18} />
@@ -187,9 +199,9 @@ function SidebarNavItem({ item, active, collapsed }: { item: NavItem; active: bo
             <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-red-500" />
           )}
         </Link>
-        <span className="pointer-events-none absolute left-full top-1/2 z-20 ml-3 -translate-y-1/2 whitespace-nowrap rounded-md bg-zinc-800 px-2.5 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity duration-200 group-hover/item:opacity-100">
+        <span className="pointer-events-none absolute left-full top-1/2 z-20 ml-3 -translate-y-1/2 whitespace-nowrap rounded-md bg-foreground px-2.5 py-1 text-xs font-medium text-background opacity-0 shadow-lg transition-opacity duration-200 group-hover/item:opacity-100">
           {item.title}
-          <span className="absolute -left-1 top-1/2 h-2 w-2 -translate-y-1/2 rotate-45 bg-zinc-800" />
+          <span className="absolute -left-1 top-1/2 h-2 w-2 -translate-y-1/2 rotate-45 bg-foreground" />
         </span>
       </div>
     );
@@ -197,24 +209,24 @@ function SidebarNavItem({ item, active, collapsed }: { item: NavItem; active: bo
   return (
     <Link
       href={item.url}
+      aria-current={active ? "page" : undefined}
       className={[
-        "group/nav relative flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] leading-tight transition-colors duration-150",
-        active ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground" : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
+        "group/nav relative flex w-full items-center gap-3 rounded-2xl px-4 py-2.5 text-[13px] font-semibold transition-all duration-150",
+        active
+          ? "bg-primary text-white shadow-xs font-semibold"
+          : "text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-foreground font-medium",
       ].join(" ")}
     >
-      {active && (
-        <span aria-hidden className="absolute -left-0 top-0 h-full w-[3px] rounded-r-full bg-primary" />
-      )}
       <Icon
         name={item.icon}
-        size={16}
+        size={17}
         className={[
           "shrink-0 transition-colors duration-150",
-          active ? "text-primary" : "text-sidebar-foreground/50 group-hover/nav:text-sidebar-foreground",
+          active ? "text-white" : "text-muted-foreground group-hover/nav:text-foreground",
         ].join(" ")}
       />
       <span className="flex-1 truncate">{item.title}</span>
-      {item.badge !== undefined && <SidebarBadge value={item.badge} />}
+      {item.badge !== undefined && <SidebarBadge value={item.badge} onBrand={active} />}
     </Link>
   );
 }
@@ -222,36 +234,17 @@ function SidebarNavItem({ item, active, collapsed }: { item: NavItem; active: bo
 function SidebarSectionLabel({ children, collapsed }: { children: ReactNode; collapsed: boolean }) {
   if (collapsed) return <div className="py-1.5" />;
   return (
-    <p className="px-2.5 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/40">
+    <p className="px-3 pb-1 pt-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">
       {children}
     </p>
   );
 }
 
 function AppSidebar({ collapsed = false }: { collapsed?: boolean }) {
-  const [location, setLocation] = useLocation();
-  const { user, logout } = useAuth();
-  const logoutMutation = useLogout();
-  const { toast } = useToast();
+  const [location] = useLocation();
+  const { user } = useAuth();
   const { data: notifications = [] } = useNotifications();
   const navItems = useNavItems();
-
-  const handleLogout = () => {
-    logoutMutation.mutate(undefined, {
-      onSuccess: () => {
-        logout();
-        setLocation("/login");
-      },
-      onError: () => {
-        toast({ title: "Error logging out", variant: "destructive" });
-      },
-    });
-  };
-
-  const getInitials = (name?: string | null) => {
-    if (!name) return "U";
-    return name.split(" ").map((n) => n[0]).join("").toUpperCase().substring(0, 2);
-  };
 
   const notificationIconName = (type: string) => {
     switch (type) {
@@ -283,13 +276,13 @@ function AppSidebar({ collapsed = false }: { collapsed?: boolean }) {
   ];
 
   const adminItems: NavItem[] = [
-    ...(canAdminPage
-      ? [{ key: "admin", title: "Company Admin", url: "/admin", icon: "building-2" }]
-      : []),
-    ...(canDeveloper
-      ? [{ key: "developers", title: "Developers", url: "/developers", icon: "code" }]
-      : []),
-  ];
+    { key: "admin", title: "Company Admin", url: "/admin", icon: "building-2" },
+    { key: "developers", title: "Developers", url: "/developers", icon: "code" },
+  ].filter(item => {
+    if (item.key === "admin") return isAdmin || canAdminPage;
+    if (item.key === "developers") return canDeveloper;
+    return false;
+  });
 
   const alertItems: NavItem[] = notifications.map((n: any) => ({
     key: n.id,
@@ -300,25 +293,26 @@ function AppSidebar({ collapsed = false }: { collapsed?: boolean }) {
   }));
 
   return (
-<aside
-       className={[
-         "relative flex h-full flex-col overflow-hidden border-r border-sidebar-border bg-sidebar transition-all duration-300 scrollbar-hide",
-         collapsed ? "w-16 p-2.5" : "w-64 p-3",
-       ].join(" ")}
+    <aside
+      className={[
+        "relative flex h-full flex-col overflow-hidden border-r border-sidebar-border bg-sidebar transition-all duration-300 scrollbar-hide",
+        collapsed ? "w-16 p-2.5" : "w-64 p-4",
+      ].join(" ")}
     >
-      {/* Header */}
-      <div className={collapsed ? "relative z-10 flex justify-center pb-4" : "relative z-10 flex items-center gap-3 px-1 pb-4"}>
+      {/* Brand Header matching PickleDash */}
+      <div className={collapsed ? "relative z-10 flex justify-center pb-4" : "relative z-10 flex items-center gap-3 px-1 pb-5 pt-1"}>
         <SidebarLogo />
         {!collapsed && (
-          <div className="leading-tight">
-            <p className="font-serif text-base font-bold text-sidebar-foreground">Internal Portal</p>
+          <div className="leading-tight min-w-0">
+            <p className="text-base font-extrabold text-foreground tracking-tight">JMCS Portal</p>
+            <p className="text-[11px] font-medium text-muted-foreground">Internal Management Pro</p>
           </div>
         )}
       </div>
 
       {/* Navigation */}
-       <nav className="relative z-10 flex-1 space-y-0.5 overflow-y-auto scrollbar-hide">
-         <SidebarSectionLabel collapsed={collapsed}>Menu</SidebarSectionLabel>
+      <nav className="relative z-10 flex-1 space-y-1 overflow-y-auto scrollbar-hide">
+        <SidebarSectionLabel collapsed={collapsed}>Main Menu</SidebarSectionLabel>
         {navItems.map((item) => (
           <SidebarNavItem
             key={item.url}
@@ -337,10 +331,14 @@ function AppSidebar({ collapsed = false }: { collapsed?: boolean }) {
           </>
         )}
 
-        <SidebarSectionLabel collapsed={collapsed}>Insights</SidebarSectionLabel>
-        {insightsItems.map((item) => (
-          <SidebarNavItem key={item.key} item={item} active={isActive(item.url)} collapsed={collapsed} />
-        ))}
+        {insightsItems.length > 0 && (
+          <>
+            <SidebarSectionLabel collapsed={collapsed}>Insights</SidebarSectionLabel>
+            {insightsItems.map((item) => (
+              <SidebarNavItem key={item.key} item={item} active={isActive(item.url)} collapsed={collapsed} />
+            ))}
+          </>
+        )}
 
         {adminItems.length > 0 && (
           <>
@@ -350,52 +348,21 @@ function AppSidebar({ collapsed = false }: { collapsed?: boolean }) {
             ))}
           </>
         )}
-
-        <SidebarSectionLabel collapsed={collapsed}>Profile</SidebarSectionLabel>
-        <SidebarNavItem
-          item={{ key: "profile", title: "My Profile", url: "/profile", icon: "user" }}
-          active={isActive("/profile")}
-          collapsed={collapsed}
-        />
       </nav>
 
-      {/* Footer / Profile */}
-      <div className="relative z-10 mt-auto shrink-0 border-t border-sidebar-border pt-4">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              className={[
-                "flex w-full items-center gap-3 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-sidebar-accent/60",
-                collapsed ? "justify-center" : "",
-              ].join(" ")}
-            >
-              <Avatar className="h-9 w-9 shrink-0 ring-1 ring-zinc-200">
-                <AvatarImage src={(user as any)?.photoUrl || undefined} alt={user?.fullName || user?.username} />
-                <AvatarFallback className="bg-red-500 text-sm font-semibold text-white">
-                  {getInitials(user?.fullName || user?.username)}
-                </AvatarFallback>
-              </Avatar>
-              {!collapsed && (
-                <>
-                  <div className="min-w-0 flex-1 leading-tight">
-                    <p className="truncate text-sm font-medium text-sidebar-foreground">{user?.fullName || user?.username}</p>
-                    <p className="truncate text-xs text-sidebar-foreground/60">{formatRole(user?.role)}</p>
-                  </div>
-                  <Icon name="more-vertical" size={18} className="text-sidebar-foreground/60" />
-                </>
-              )}
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" side="top" className="w-52">
-            <DropdownMenuLabel>My Account</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-destructive">
-              <Icon name="log-out" size={16} className="mr-2" />
-              Log out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+      {/* Bottom Settings */}
+      <div className="relative z-10 mt-auto shrink-0 border-t border-sidebar-border pt-3 space-y-1">
+        <Link
+          href="/profile"
+          className={[
+            "flex w-full items-center gap-3 rounded-xl px-3.5 py-2 text-xs font-semibold transition-colors",
+            location === "/profile" ? "bg-primary text-white shadow-xs" : "text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-foreground",
+            collapsed ? "justify-center" : "",
+          ].join(" ")}
+        >
+          <Icon name="settings" size={16} />
+          {!collapsed && <span>Settings</span>}
+        </Link>
       </div>
     </aside>
   );
@@ -421,7 +388,7 @@ function SidebarShell() {
 }
 
 export function AppLayout({ children }: { children: ReactNode }) {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, logout } = useAuth();
   const [location, setLocation] = useLocation();
   const { data: notifications = [] } = useNotifications();
   const update = useAppUpdate();
@@ -429,7 +396,19 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<{ contracts: any[]; certificates: any[]; projects: any[]; users: any[] }>({ contracts: [], certificates: [], projects: [], users: [] });
   const { toast } = useToast();
-  const page = getCurrentPage(location);
+  const logoutMutation = useLogout();
+
+  const handleLogout = () => {
+    logoutMutation.mutate(undefined, {
+      onSuccess: () => {
+        logout();
+        setLocation("/login");
+      },
+      onError: () => {
+        toast({ title: "Error logging out", variant: "destructive" });
+      },
+    });
+  };
 
   useSessionTimeout();
 
@@ -502,101 +481,67 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   const updateAvailable = update.isDesktop && update.phase === "available";
   const alertCount = notifications.length + (updateAvailable ? 1 : 0);
-  const dangerCount = notifications.filter(n => n.severity === "danger").length;
 
   return (
     <SidebarProvider>
       <div className="flex h-screen w-full bg-background overflow-hidden">
         <SidebarShell />
         <div className="flex flex-1 flex-col min-w-0 overflow-hidden relative">
-          <header className="relative h-16 shrink-0 border-b border-border/70 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-2xl flex items-center px-4 md:px-6 sticky top-0 z-10 overflow-hidden">
-            <div aria-hidden className="pointer-events-none absolute inset-0 -z-0 opacity-60">
-              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
-              <div className="absolute -top-16 left-1/3 h-40 w-40 rounded-full bg-primary/10 blur-3xl" />
-              <div className="absolute -top-20 right-1/4 h-44 w-44 rounded-full bg-sky-400/10 blur-3xl" />
-              <div className="absolute inset-0" style={{ background: "linear-gradient(90deg, hsl(20 60% 96%) 0%, transparent 35%, transparent 65%, hsl(210 60% 95%) 100%)" }} />
-            </div>
-            <SidebarTrigger className="relative z-10 mr-4" />
-            <div className="relative z-10 flex items-center gap-3 mr-auto">
-              <div className="leading-none">
-                <h1 className="text-lg font-semibold tracking-tight text-foreground">{page.title}</h1>
+          {location === "/" && (
+          <header className="surface sticky top-0 z-10 flex h-16 shrink-0 items-center overflow-hidden border-b px-4 md:px-6">
+            {/* PickleDash Left Header Info */}
+            <div className="relative z-10 flex flex-col mr-auto">
+              <span className="text-[11px] font-bold text-primary uppercase tracking-tighter">JMCS Organization</span>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
+                <span className="flex items-center gap-1">
+                  <span className="inline-block h-4 w-4 rounded bg-red-500 text-[10px] text-white flex items-center justify-center font-bold">{alertCount}</span>
+                  {new Date().toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                </span>
               </div>
             </div>
-            <div className="relative z-10 flex items-center gap-2">
+
+            {/* PickleDash Center Search */}
+            <div className="relative z-10 hidden lg:flex items-center max-w-sm w-full mx-4">
+              <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+              <button 
+                onClick={() => setSearchOpen(true)}
+                className="w-full h-10 pl-9 pr-4 text-sm text-left text-muted-foreground bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl hover:bg-slate-100 transition-colors flex items-center"
+              >
+                Search contracts, people…
+              </button>
+            </div>
+
+            <div className="relative z-10 flex items-center gap-4">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="relative rounded-full text-muted-foreground hover:bg-foreground/5 hover:text-foreground transition-colors"
-                    aria-label="Notifications"
-                  >
-                    <Icon name="bell" size={20} />
-                    {alertCount > 0 && (
-                      <span className="absolute top-0.5 right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white px-1 ring-2 ring-white dark:ring-zinc-900">
-                        {dangerCount > 0 ? dangerCount : alertCount}
-                      </span>
-                    )}
-                  </Button>
+                  <button className="flex items-center gap-2 hover:opacity-80 transition-opacity focus:outline-none">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 ring-2 ring-emerald-100 dark:bg-emerald-950 dark:ring-emerald-900">
+                      <Icon name="user" size={18} />
+                    </div>
+                    <div className="hidden sm:flex flex-col items-start leading-tight">
+                      <span className="text-sm font-bold text-foreground truncate max-w-[120px]">{user?.fullName || user?.username}</span>
+                      <span className="text-[10px] font-semibold text-muted-foreground uppercase">{formatRole(user?.role)}</span>
+                    </div>
+                    <Icon name="chevron-down" size={14} className="text-muted-foreground" />
+                  </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-80 max-h-96 overflow-y-auto">
-                  <DropdownMenuLabel className="flex items-center gap-2">
-                    <Icon name="bell" size={16} />
-                    Notifications
-                    {alertCount > 0 && (
-                      <Badge variant="outline" className="ml-auto text-[10px] h-4 px-1.5 bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800">{alertCount}</Badge>
-                    )}
-                  </DropdownMenuLabel>
+                <DropdownMenuContent align="end" className="w-52">
+                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  {updateAvailable && (
-                    <DropdownMenuItem
-                      className="p-0"
-                      onSelect={(e) => { e.preventDefault(); update.download(); }}
-                    >
-                      <div className="flex items-start gap-3 px-3 py-2.5 w-full cursor-pointer">
-                        <Icon name="refresh-cw" size={16} className="mt-0.5 shrink-0 text-primary" />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-sm font-medium text-primary">App update available</span>
-                            {update.version && (
-                              <span className="text-[10px] text-muted-foreground ml-auto shrink-0">v{update.version}</span>
-                            )}
-                          </div>
-                          <p className="text-xs text-muted-foreground leading-snug mt-0.5">
-                            A new version is ready. Click to download and install.
-                          </p>
-                        </div>
-                      </div>
-                    </DropdownMenuItem>
-                  )}
-                  {notifications.length === 0 && !updateAvailable ? (
-                    <div className="px-3 py-6 text-center text-sm text-muted-foreground">No alerts at this time</div>
-                  ) : (
-                    notifications.map((n) => (
-                      <DropdownMenuItem key={n.id} className="p-0" asChild>
-                        <Link href={n.link} className="flex items-start gap-3 px-3 py-2.5 w-full">
-                          {n.type === "certificate_expiring" ? (
-                            <Icon name="shield-alert" size={16} className={`mt-0.5 shrink-0 ${n.severity === "danger" ? "text-red-500" : "text-amber-500"}`} />
-                          ) : (
-                            <Icon name="clock" size={16} className={`mt-0.5 shrink-0 ${n.severity === "danger" ? "text-red-500" : "text-blue-500"}`} />
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              <span className={`text-sm font-medium ${n.severity === "danger" ? "text-red-600 dark:text-red-400" : ""}`}>{n.title}</span>
-                              <span className="text-[10px] text-muted-foreground ml-auto shrink-0">{n.daysUntil === 0 ? "Overdue" : `${n.daysUntil}d`}</span>
-                            </div>
-                            <p className="text-xs text-muted-foreground leading-snug mt-0.5 line-clamp-2">{n.description}</p>
-                          </div>
-                        </Link>
-                      </DropdownMenuItem>
-                    ))
-                  )}
+                  <DropdownMenuItem asChild>
+                    <Link href="/profile" className="cursor-pointer">Profile</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-destructive">
+                    <Icon name="log-out" size={16} className="mr-2" />
+                    Log out
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
           </header>
+          )}
           <main className="flex-1 overflow-auto paper-canvas p-4 md:p-6 lg:p-8">
-            <div className="mx-auto max-w-7xl h-full page-enter">
+            <div className="mx-auto max-w-7xl h-full">
               {children}
             </div>
           </main>

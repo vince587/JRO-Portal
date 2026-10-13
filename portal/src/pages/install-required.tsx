@@ -106,7 +106,7 @@ export default function InstallRequired() {
 
       <div className="relative z-10 min-h-screen w-full flex items-center justify-center p-6">
         <div
-          className="w-full max-w-md rounded-2xl overflow-hidden shadow-2xl neu"
+          className="w-full max-w-md rounded-2xl overflow-hidden shadow-2xl surface"
           style={{ backgroundColor: "#001B48", minHeight: "460px" }}
         >
           <div className="flex flex-col items-center justify-center gap-5 px-10 py-14 text-center">

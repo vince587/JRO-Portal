@@ -312,7 +312,7 @@ export function DocumentViewer({
             <div className="flex items-center gap-1.5 shrink-0">
               <button
                 onClick={() => setFullScreen(true)}
-                className="neu-sm rounded-lg px-3 py-1.5 text-xs font-medium text-foreground/80 hover:shadow-md transition-all inline-flex items-center gap-1.5"
+                className="surface rounded-lg px-3 py-1.5 text-xs font-medium text-foreground/80 hover:shadow-md transition-all inline-flex items-center gap-1.5"
               >
                 <Icon name="maximize-2" size={14} /> Full view
               </button>

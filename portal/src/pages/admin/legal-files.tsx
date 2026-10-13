@@ -46,7 +46,7 @@ export default function AdminLegalFiles() {
 
       <div className="flex justify-end"><Button size="sm" onClick={openAdd}><Icon name="plus" className="mr-2" size={16} /> Add Legal File</Button></div>
 
-      <Card className="neu rounded-lg"><CardContent className="p-0">
+      <Card className="surface rounded-lg"><CardContent className="p-0">
         <Table>
           <TableHeader><TableRow>
             <TableHead>Title</TableHead><TableHead>Company</TableHead><TableHead>Type</TableHead><TableHead>Expiry</TableHead><TableHead className="w-20"></TableHead>

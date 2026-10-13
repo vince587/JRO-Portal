@@ -49,7 +49,7 @@ export default function AdminRemittances() {
 
       <div className="flex justify-end"><Button size="sm" onClick={openAdd}><Icon name="plus" className="mr-2" size={16} /> Add Remittance</Button></div>
 
-      <Card className="neu rounded-lg"><CardContent className="p-0">
+      <Card className="surface rounded-lg"><CardContent className="p-0">
         <Table>
           <TableHeader><TableRow>
             <TableHead>Type</TableHead><TableHead>Company</TableHead><TableHead>Amount</TableHead><TableHead>Due Date</TableHead><TableHead>Status</TableHead><TableHead>Reference</TableHead><TableHead className="w-20"></TableHead>

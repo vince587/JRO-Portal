@@ -56,8 +56,20 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SaveProgressIndicator } from "@/components/upload-progress";
+import { StatusBadge } from "@/components/status-badge";
+import { PageHeader } from "@/components/page-header";
+import LeadsImportDialog, { downloadLeadsTemplate } from "./leads-import-dialog";
 
 const LEAD_STATUSES = ["new", "contacted", "qualified", "lost"];
+
+/** Business-unit pill. SIS is blue, JMCS is green, everywhere in the app. */
+function unitBadge(type: string) {
+  return (
+    <Badge variant="outline" className={`font-mono text-[10px] tracking-wider ${type === "JMCS" ? "tone-success" : "tone-info"}`}>
+      {type || "—"}
+    </Badge>
+  );
+}
 
 interface LeadSummary {
   total: number;
@@ -70,13 +82,6 @@ interface LeadSummary {
   byTypeWithPhone: Record<string, number>;
   byTypeWithEmail: Record<string, number>;
 }
-
-const statusColor: Record<string, string> = {
-  new: "bg-slate-100 text-foreground border-border dark:bg-slate-800 dark:text-muted-foreground/60",
-  contacted: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300",
-  qualified: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300",
-  lost: "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300",
-};
 
 const QUICK_REMARKS = ["Called", "Emailed", "Called & Emailed", "No Answer", "Follow Up", "Qualified", "Lost"];
 
@@ -249,14 +254,16 @@ export default function Leads() {
   const [typeFilter, setTypeFilter] = useState<"ALL" | "JMCS" | "SIS">("ALL");
   const [periodFilter, setPeriodFilter] = useState("");
   const [showAddRow, setShowAddRow] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<any | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  const canCreateJmcsLead = user?.canAccessJmcs || user?.roles?.some(r => ["admin", "ADMIN", "IT", "officer"].includes(r)) || ["admin", "ADMIN", "IT", "officer"].includes(user?.role ?? "");
-  const canCreateSisLead = user?.canAccessSis || user?.roles?.some(r => ["admin", "ADMIN", "IT", "officer"].includes(r)) || ["admin", "ADMIN", "IT", "officer"].includes(user?.role ?? "");
+  const isAdmin = user?.roles?.some(r => ["admin", "ADMIN", "IT"].includes(r)) || ["admin", "ADMIN", "IT"].includes(user?.role ?? "") || !!user?.canAccessAdmin;
+  const canCreateJmcsLead = user?.canAccessJmcs || isAdmin;
+  const canCreateSisLead = user?.canAccessSis || isAdmin;
 
   const [newRow, setNewRow] = useState({
     companyName: "",
@@ -418,11 +425,26 @@ export default function Leads() {
     return matchesSearch && matchesStatus && matchesType && matchesPeriod;
   });
 
-  const isAdmin = user?.roles?.some(r => ["admin", "ADMIN", "IT", "officer"].includes(r)) || ["admin", "ADMIN", "IT", "officer"].includes(user?.role ?? "");
   const isAddValid = newRow.companyName.trim() && newRow.contactPerson.trim();
 
+  /**
+   * Enter saves the row, same as pressing the green tick. Escape abandons it.
+   * Typing a whole lead should not need a trip to the mouse.
+   */
+  function handleAddRowKey(e: React.KeyboardEvent) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (isAddValid && !createMutation.isPending) createMutation.mutate();
+      return;
+    }
+    if (e.key === "Escape") {
+      e.preventDefault();
+      resetAddRow();
+    }
+  }
+
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="page-enter space-y-6">
 <div className="hidden print:block mb-4">
           <div className="text-center">
             <h1 className="text-xl font-bold uppercase tracking-wide">Leads Report</h1>
@@ -444,27 +466,36 @@ export default function Leads() {
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 no-print">
-          <div>
-            <p className="text-muted-foreground">
-              {isAdmin ? "Manage all sales leads." : "Manage sales leads for your granted services."}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => window.print()}>
-              <Icon name="printer" className="mr-2" size={16} />
-              Print Report
-            </Button>
-            <Button onClick={() => setShowAddRow(true)} disabled={showAddRow}>
-              <Icon name="plus" className="mr-2" size={16} />
-              Add Lead
-            </Button>
-          </div>
+        <div className="no-print">
+          <PageHeader
+            title="Leads"
+            description={isAdmin ? "Manage all sales leads." : "Manage sales leads for your granted services."}
+            actions={
+              <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={() => window.print()}>
+                  <Icon name="printer" className="mr-2" size={16} />
+                  Print Report
+                </Button>
+                <Button variant="outline" onClick={downloadLeadsTemplate} title="Download an empty Excel template">
+                  <Icon name="file-spreadsheet" className="mr-2" size={16} />
+                  Template
+                </Button>
+                <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+                  <Icon name="upload" className="mr-2" size={16} />
+                  Import Excel
+                </Button>
+                <Button onClick={() => setShowAddRow(true)} disabled={showAddRow}>
+                  <Icon name="plus" className="mr-2" size={16} />
+                  Add Lead
+                </Button>
+              </div>
+            }
+          />
         </div>
 
       {selectedIds.size > 0 && (
-        <div className="flex items-center justify-between rounded-lg border bg-muted/40 px-4 py-2 no-print">
-          <span className="text-sm font-medium">{selectedIds.size} selected</span>
+        <div className="surface-sunken flex items-center justify-between rounded-lg px-4 py-2 no-print">
+          <span className="text-sm font-medium tabular">{selectedIds.size} selected</span>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>Clear selection</Button>
             <Button variant="destructive" size="sm" onClick={() => setBulkDeleteOpen(true)}>
@@ -475,7 +506,7 @@ export default function Leads() {
         </div>
       )}
 
-      <Card className="neu rounded-lg print:shadow-none print:border print:border-gray-300 print:rounded-none print:mb-2">
+      <Card className="surface rounded-lg print:mb-2">
         <CardContent className="pt-5 pb-4 print:pt-2 print:pb-2">
           <div className="flex items-center gap-2 mb-4 print:mb-1">
             <Icon name="bar-chart-2" className="text-primary print:hidden" size={18} />
@@ -550,9 +581,9 @@ export default function Leads() {
         </div>
       </div>
 
-      <Card className="neu rounded-lg print:shadow-none print:border print:border-gray-300 print:rounded-none">
+      <Card className="surface rounded-lg">
         <CardContent className="p-0">
-          <div className="p-4 border-b neu-inset rounded-xl space-y-3 no-print">
+          <div className="surface-sunken space-y-3 border-b p-4 no-print">
             <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
               <div className="relative flex-1 w-full">
                 <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
@@ -613,21 +644,26 @@ export default function Leads() {
                     <TableCell>
                       <Input
                         placeholder="Company name"
+                        aria-label="Company Name"
                         className="h-8 text-xs"
                         value={newRow.companyName}
                         onChange={e => handleCellChange("companyName", e.target.value)}
+                        onKeyDown={handleAddRowKey}
                       />
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col gap-1">
                         <Input
                           placeholder="Full name"
+                          aria-label="Full Name"
                           className="h-7 text-xs"
                           value={newRow.contactPerson}
                           onChange={e => handleCellChange("contactPerson", e.target.value)}
+                          onKeyDown={handleAddRowKey}
                         />
                         <Input
                           placeholder="Position"
+                          aria-label="Position"
                           className="h-7 text-xs"
                           value={newRow.position}
                           onChange={e => handleCellChange("position", e.target.value)}
@@ -638,24 +674,29 @@ export default function Leads() {
                       <div className="flex flex-col gap-1">
                         <Input
                           placeholder="Email"
+                          aria-label="Email"
                           className="h-7 text-xs"
                           value={newRow.email}
                           onChange={e => handleCellChange("email", e.target.value)}
                         />
                         <Input
                           placeholder="Phone"
+                          aria-label="Phone"
                           className="h-7 text-xs"
                           value={newRow.phone}
                           onChange={e => handleCellChange("phone", e.target.value)}
+                          onKeyDown={handleAddRowKey}
                         />
                       </div>
                     </TableCell>
                     <TableCell>
                       <Input
                         placeholder="e.g. ISO 9001"
+                        aria-label="Service Interest"
                         className="h-8 text-xs"
                         value={newRow.serviceInterest}
                         onChange={e => handleCellChange("serviceInterest", e.target.value)}
+                        onKeyDown={handleAddRowKey}
                       />
                     </TableCell>
                     <TableCell>
@@ -700,6 +741,8 @@ export default function Leads() {
                         <Button
                           size="icon"
                           variant="ghost"
+                          aria-label="Save lead"
+                          title={isAddValid ? "Save lead" : "Fill in Company name and Full name"}
                           className="h-7 w-7 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
                           disabled={!isAddValid || createMutation.isPending}
                           onClick={() => createMutation.mutate()}
@@ -709,6 +752,7 @@ export default function Leads() {
                         <Button
                           size="icon"
                           variant="ghost"
+                          aria-label="Cancel"
                           className="h-7 w-7 text-muted-foreground hover:text-foreground"
                           onClick={resetAddRow}
                         >
@@ -742,7 +786,7 @@ export default function Leads() {
                   </TableRow>
                 ) : (
                   filteredLeads?.map((lead: any) => (
-                    <TableRow key={lead.id} className="group">
+                    <TableRow key={lead.id} className={`group ${selectedIds.has(lead.id) ? "row-selected" : ""}`}>
                       <TableCell className="no-print">
                         <Checkbox
                           checked={selectedIds.has(lead.id)}
@@ -784,14 +828,10 @@ export default function Leads() {
                         {lead.serviceInterest || <span className="text-muted-foreground italic">None</span>}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className={`font-mono text-[10px] tracking-wider ${lead.type === "JMCS" ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400" : "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400"}`}>
-                          {lead.type || "—"}
-                        </Badge>
+                        {unitBadge(lead.type)}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className={`capitalize ${statusColor[lead.status] || ""}`}>
-                          {lead.status}
-                        </Badge>
+                        <StatusBadge status={lead.status} />
                       </TableCell>
                       <TableCell className="hidden sm:table-cell print:table-cell text-sm text-muted-foreground">
                         <div className="flex items-center gap-2">
@@ -841,8 +881,8 @@ export default function Leads() {
             </Table>
           </div>
 
-          <div className="p-4 border-t bg-muted/10 text-xs text-muted-foreground flex justify-between items-center">
-            <span>Showing {filteredLeads?.length || 0} {filteredLeads?.length === 1 ? 'lead' : 'leads'}</span>
+          <div className="surface-sunken flex items-center justify-between border-t px-4 py-3 text-xs text-muted-foreground">
+            <span className="tabular">Showing {filteredLeads?.length || 0} {filteredLeads?.length === 1 ? 'lead' : 'leads'}</span>
           </div>
         </CardContent>
       </Card>
@@ -868,6 +908,14 @@ export default function Leads() {
         </AlertDialogContent>
       </AlertDialog>
 
+      <LeadsImportDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        onImported={refetch}
+        defaultType={canCreateJmcsLead ? "JMCS" : "SIS"}
+        canImportJmcs={canCreateJmcsLead}
+        canImportSis={canCreateSisLead}
+      />
       <EditLeadDialog
         lead={editingLead}
         open={editDialogOpen}
@@ -875,26 +923,6 @@ export default function Leads() {
         onSuccess={refetch}
       />
       <SaveProgressIndicator saving={createMutation.isPending} label="Creating lead..." />
-
-      <style>{`
-        @media print {
-          html, body { background: white !important; height: auto !important; overflow: visible !important; }
-          .no-print { display: none !important; }
-          [data-sidebar] { display: none !important; }
-          header { display: none !important; }
-          nav, aside, footer { display: none !important; }
-          [role="dialog"] { display: none !important; }
-          [data-radix-popper-content-wrapper] { display: none !important; }
-          .fixed, .absolute { display: none !important; }
-          #root > div > main { padding: 0 !important; }
-          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-          .border { border-color: #cbd5e1 !important; }
-          table { font-size: 8pt !important; width: 100% !important; border-collapse: collapse !important; }
-          table th, table td { border: 1px solid #cbd5e1 !important; padding: 4px 6px !important; }
-          table thead th { background: #f1f5f9 !important; font-weight: 600 !important; }
-          .overflow-x-auto { overflow: visible !important; }
-        }
-      `}</style>
     </div>
   );
 }

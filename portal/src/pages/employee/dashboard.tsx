@@ -46,9 +46,9 @@ import { useToast } from "@/hooks/use-toast";
 import { TimeClockCard } from "@/components/hris/TimeClockCard";
 
 const statusColor: Record<string, string> = {
-  pending: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400",
-  approved: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400",
-  rejected: "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400",
+  pending: "tone-warning",
+  approved: "tone-success",
+  rejected: "tone-danger",
 };
 
 export default function EmployeeDashboard() {
@@ -106,7 +106,7 @@ export default function EmployeeDashboard() {
   const approvedLeaves = leaves?.filter(l => l.status === "approved") ?? [];
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-6 page-enter">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-3">
           <Avatar className="h-12 w-12 border border-border">
@@ -136,7 +136,7 @@ export default function EmployeeDashboard() {
           <Skeleton className="h-48 rounded-lg" />
         </div>
       ) : !profile ? (
-        <Card className="neu rounded-lg">
+        <Card className="surface rounded-lg">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Icon name="shield-alert" className="text-muted-foreground mb-4" size={48} />
             <h2 className="text-xl font-bold">No Employee Record Found</h2>
@@ -150,7 +150,7 @@ export default function EmployeeDashboard() {
         <TimeClockCard />
         <div className="grid md:grid-cols-3 gap-6">
           <div className="md:col-span-2 space-y-6">
-            <Card className="neu rounded-lg">
+            <Card className="surface rounded-lg">
               <CardHeader className="pb-3 border-b">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Icon name="user" className="text-muted-foreground" size={16} />
@@ -175,9 +175,9 @@ export default function EmployeeDashboard() {
                   <div className="space-y-1">
                     <Label className="text-xs text-muted-foreground flex items-center gap-1"><Icon name="badge-check" size={12} /> Status</Label>
                     <Badge variant="outline" className={
-                      profile.employmentStatus === "Regular" ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400" :
-                      profile.employmentStatus === "Probationary" ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400" :
-                      "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400"
+                      profile.employmentStatus === "Regular" ? "tone-success" :
+                      profile.employmentStatus === "Probationary" ? "tone-warning" :
+                      "tone-info"
                     }>{profile.employmentStatus}</Badge>
                   </div>
                   <div className="space-y-1">
@@ -204,7 +204,7 @@ export default function EmployeeDashboard() {
               </CardContent>
             </Card>
 
-            <Card className="neu rounded-lg">
+            <Card className="surface rounded-lg">
               <CardHeader className="pb-3 border-b">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Icon name="heart" className="text-muted-foreground" size={16} />
@@ -233,7 +233,7 @@ export default function EmployeeDashboard() {
               </CardContent>
             </Card>
 
-            <Card className="neu rounded-lg">
+            <Card className="surface rounded-lg">
               <CardHeader className="pb-3 border-b flex flex-row items-center justify-between">
                 <div>
                   <CardTitle className="text-base flex items-center gap-2">
@@ -311,7 +311,7 @@ export default function EmployeeDashboard() {
           </div>
 
           <div className="space-y-6">
-            <Card className="neu rounded-lg">
+            <Card className="surface rounded-lg">
               <CardHeader className="pb-3 border-b">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Icon name="clock" className="text-muted-foreground" size={16} />
@@ -343,7 +343,7 @@ export default function EmployeeDashboard() {
               </CardContent>
             </Card>
 
-            <Card className="neu rounded-lg">
+            <Card className="surface rounded-lg">
               <CardHeader className="pb-3 border-b">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Icon name="file-text" className="text-muted-foreground" size={16} />

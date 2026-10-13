@@ -8,8 +8,6 @@ import { ContractType, ContractStatus } from "@workspace/api-client-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -56,6 +54,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
+import ContractsImportDialog, { downloadContractsTemplate } from "@/pages/contracts-import-dialog";
+import { StatusBadge, statusLabel, toneFor, toneHex } from "@/components/status-badge";
+import { PageHeader } from "@/components/page-header";
 
 function todayStr() {
   return new Date().toISOString().split("T")[0];
@@ -129,6 +130,7 @@ export default function ContractsList() {
   const [statusFilter, setStatusFilter] = useState<"ALL" | ContractStatus>("ALL");
   const [showAddRow, setShowAddRow] = useState(false);
   const [showNameSuggestions, setShowNameSuggestions] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -329,63 +331,73 @@ export default function ContractsList() {
   const isAddValid = newRow.title && newRow.contractNumber && newRow.clientName && newRow.value;
   const nameSuggestions = matchSuggestions(newRow.title, newRow.type);
 
-  const getStatusBadge = (status: ContractStatus) => {
-    switch (status) {
-      case 'active':
-        return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-900/50">Active</Badge>;
-      case 'pending':
-        return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-900/50">Pending</Badge>;
-      case 'completed':
-        return <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-900/50">Completed</Badge>;
-      case 'expired':
-        return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-900/50">Expired</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
+  /**
+   * Enter saves the row, same as pressing the green tick. Escape abandons it.
+   * Typing a whole contract should not need a trip to the mouse.
+   */
+  function handleAddRowKey(e: React.KeyboardEvent) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (isAddValid && !createMutation.isPending) createMutation.mutate();
+      return;
     }
-  };
+    if (e.key === "Escape") {
+      e.preventDefault();
+      resetAddRow();
+    }
+  }
 
-  const getTypeBadge = (type: ContractType) => {
-    return (
-      <Badge variant="secondary" className="font-mono text-[10px] tracking-wider">
-        {type}
-      </Badge>
-    );
-  };
+  const getStatusBadge = (status: ContractStatus) => <StatusBadge status={status} />;
+
+  const getTypeBadge = (type: ContractType) => (
+    <Badge variant="outline" className={`font-mono text-[10px] tracking-wider ${type === "JMCS" ? "tone-success" : "tone-info"}`}>
+      {type}
+    </Badge>
+  );
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <p className="text-muted-foreground">
-            {isSisRoute ? "Manage SIS certification contracts." : isJmcsRoute ? "Manage JMCS training contracts." : "Manage and monitor organizational contracts."}
-          </p>
-        </div>
-        {canCreateAny ? (
-          <Button onClick={() => setShowAddRow(true)} disabled={showAddRow} variant="success">
-            <Icon name="plus" className="mr-2" size={16} />
-            Add Contract
+    <div className="page-enter space-y-6">
+      <PageHeader
+        title={isSisRoute ? "SIS Contracts" : isJmcsRoute ? "JMCS Contracts" : "Contracts"}
+        description={isSisRoute ? "Manage SIS certification contracts." : isJmcsRoute ? "Manage JMCS training contracts." : "Manage and monitor organizational contracts."}
+        actions={
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={downloadContractsTemplate} title="Download an empty Excel template">
+            <Icon name="file-spreadsheet" className="mr-2" size={16} />
+            Template
           </Button>
-        ) : (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button disabled>
-                <Icon name="plus" className="mr-2" size={16} />
-                Add Contract
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>sorry you dont have permission to add contracts</p>
-            </TooltipContent>
-          </Tooltip>
-        )}
-      </div>
+          <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+            <Icon name="upload" className="mr-2" size={16} />
+            Import Excel
+          </Button>
+          {canCreateAny ? (
+            <Button onClick={() => setShowAddRow(true)} disabled={showAddRow}>
+              <Icon name="plus" className="mr-2" size={16} />
+              Add Contract
+            </Button>
+          ) : (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button disabled>
+                  <Icon name="plus" className="mr-2" size={16} />
+                  Add Contract
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>sorry you dont have permission to add contracts</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
+        </div>
+        }
+      />
 
-      <Card className="neu rounded-lg">
+      <Card className="surface rounded-lg">
         <CardContent className="pt-5 pb-4">
           <div className="flex items-center gap-2 mb-4">
             <Icon name="bar-chart-2" className="text-primary" size={18} />
             <h2 className="text-base font-semibold tracking-tight">Analysis on Contracts</h2>
-            <Badge variant="outline" className="ml-1 font-mono text-[10px]">
+            <Badge variant="outline" className="ml-1 tabular text-[10px]">
               {contractAnalysis?.total ?? "…"} total
             </Badge>
           </div>
@@ -393,20 +405,27 @@ export default function ContractsList() {
             <div className="space-y-2">
               <div className="grid grid-cols-2 gap-3">
                 {[["JMCS", contractAnalysis?.byJmcs ?? 0], ["SIS", contractAnalysis?.bySis ?? 0]].map(([type, count]) => (
-                  <div key={type} className="rounded-md bg-muted/30 p-3">
+                  <div key={type} className="surface-sunken rounded-md p-3">
                     <div className="text-xs text-muted-foreground flex items-center gap-1">
                       <Icon name={type === "JMCS" ? "building-2" : "users"} size={12} /> {type}
                     </div>
-                    <div className="text-xl font-bold">{count}</div>
+                    <div className="text-xl font-bold tabular">{count}</div>
                   </div>
                 ))}
               </div>
             </div>
-            <div className="flex flex-wrap content-end items-center gap-1.5 text-xs">
+            <div className="grid grid-cols-2 gap-3">
               {["active", "pending", "completed", "expired"].map((s) => (
-                <Badge key={s} variant="outline" className="capitalize">
-                  {s}: {contractAnalysis?.byStatus?.[s] ?? 0}
-                </Badge>
+                <div key={s} className="surface-sunken rounded-md p-3">
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <span
+                      className="h-1.5 w-1.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: toneHex(toneFor(s)) }}
+                    />
+                    {statusLabel(s)}
+                  </div>
+                  <div className="text-xl font-bold tabular">{contractAnalysis?.byStatus?.[s] ?? 0}</div>
+                </div>
               ))}
             </div>
           </div>
@@ -414,8 +433,8 @@ export default function ContractsList() {
       </Card>
 
       {selectedIds.size > 0 && (
-        <div className="flex items-center justify-between neu-sm rounded-xl px-4 py-2">
-          <span className="text-sm font-medium">{selectedIds.size} selected</span>
+        <div className="surface-sunken flex items-center justify-between rounded-lg px-4 py-2">
+          <span className="text-sm font-medium tabular">{selectedIds.size} selected</span>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>Clear selection</Button>
             <Button variant="destructive" size="sm" onClick={() => setBulkDeleteOpen(true)}>
@@ -426,9 +445,9 @@ export default function ContractsList() {
         </div>
       )}
 
-      <Card className="neu rounded-lg">
+      <Card className="surface rounded-lg">
         <CardContent className="p-0">
-          <div className="p-4 border-b flex flex-col md:flex-row gap-4 items-center justify-between neu-inset rounded-xl">
+          <div className="surface-sunken flex flex-col gap-4 border-b p-4 md:flex-row md:items-center md:justify-between">
             <div className="flex-1 w-full flex items-center relative">
               <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
               <Input 
@@ -471,21 +490,8 @@ export default function ContractsList() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/10 hover:bg-muted/10">
-                  <TableHead className="w-[40px]">
-                    <Checkbox
-                      checked={
-                        (filteredContracts?.length ?? 0) > 0 &&
-                        (filteredContracts?.every(c => selectedIds.has(c.id)) ?? false)
-                          ? true
-                          : (filteredContracts?.some(c => selectedIds.has(c.id)) ?? false)
-                            ? "indeterminate"
-                            : false
-                      }
-                      onCheckedChange={() => toggleAllVisible((filteredContracts ?? []).map(c => c.id))}
-                      aria-label="Select all"
-                    />
-                  </TableHead>
-                  <TableHead className="w-[100px]">Number</TableHead>
+                  <TableHead className="w-[40px]" aria-label="Selection" />
+                  <TableHead className="w-[120px] whitespace-nowrap">Contract No.</TableHead>
                   <TableHead>Contract Name</TableHead>
                   <TableHead className="hidden md:table-cell">Client</TableHead>
                   <TableHead className="hidden sm:table-cell">Type</TableHead>
@@ -493,197 +499,180 @@ export default function ContractsList() {
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Value</TableHead>
                   <TableHead className="text-center min-w-[120px]">Created By</TableHead>
-                  <TableHead className="hidden sm:table-cell w-[180px]">Doc</TableHead>
+                  <TableHead className="w-[180px]">Doc</TableHead>
                   <TableHead className="w-[110px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {showAddRow && (
                   <TableRow className="bg-primary/5 border-b-2 border-primary/30">
-                    <TableCell colSpan={11} className="p-6">
-                      <div className="space-y-5">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                          <div className="flex items-center gap-2">
-                            <Icon name="plus-circle" className="text-primary" size={18} />
-                            <span className="font-semibold text-foreground">Add New Contract</span>
-                          </div>
-                          <span className="text-xs text-muted-foreground">
-                            {isAddValid ? "Ready to save" : "Fill in the required fields (marked *) to save"}
-                          </span>
+                    <TableCell className="w-[40px]" />
+                    <TableCell>
+                      <Input
+                        placeholder="CN-001"
+                        aria-label="Contract Number"
+                        className="h-8 text-xs font-mono"
+                        value={newRow.contractNumber}
+                        onChange={e => handleCellChange("contractNumber", e.target.value)}
+                        onKeyDown={handleAddRowKey}
+                      />
+                    </TableCell>
+                    <TableCell className="relative">
+                      <Input
+                        placeholder={newRow.type === "SIS" ? "e.g. ISO 9001:2015 Certification" : "e.g. Internal Auditor Training"}
+                        aria-label="Contract Name"
+                        className="h-8 text-xs"
+                        value={newRow.title}
+                        onChange={e => { handleCellChange("title", e.target.value); setShowNameSuggestions(true); }}
+                        onFocus={() => setShowNameSuggestions(true)}
+                        onBlur={() => setTimeout(() => setShowNameSuggestions(false), 150)}
+                        onKeyDown={(e) => {
+                          handleAddRowKey(e);
+                          if (e.key === "ArrowDown" && nameSuggestions.length > 0) {
+                            e.preventDefault();
+                            handleCellChange("title", nameSuggestions[0]);
+                          }
+                        }}
+                      />
+                      {showNameSuggestions && nameSuggestions.length > 0 && (
+                        <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-30 bg-popover border rounded-lg shadow-lg max-h-56 overflow-y-auto">
+                          {nameSuggestions.map(opt => (
+                            <button
+                              key={opt}
+                              type="button"
+                              className="w-full text-left px-3 py-1.5 text-xs hover:bg-accent hover:text-accent-foreground transition-colors"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => { handleCellChange("title", opt); setShowNameSuggestions(false); }}
+                            >
+                              {opt}
+                            </button>
+                          ))}
                         </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                          <div className="sm:col-span-2 lg:col-span-3 relative">
-                            <Label htmlFor="new-contract-name" className="mb-1.5 block">Contract Name *</Label>
-                            <Input
-                              id="new-contract-name"
-                              placeholder={newRow.type === "SIS" ? "e.g. ISO 9001:2015 Certification" : "e.g. ISO 9001:2015 Internal Auditor Training"}
-                              className="h-10 text-sm"
-                              value={newRow.title}
-                              onChange={e => { handleCellChange("title", e.target.value); setShowNameSuggestions(true); }}
-                              onFocus={() => setShowNameSuggestions(true)}
-                              onBlur={() => setTimeout(() => setShowNameSuggestions(false), 150)}
-                            />
-                            {showNameSuggestions && (
-                              <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-20 bg-popover border rounded-lg shadow-lg max-h-56 overflow-y-auto">
-                                {nameSuggestions.length > 0 ? (
-                                  nameSuggestions.map(opt => (
-                                    <button
-                                      key={opt}
-                                      type="button"
-                                      className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors"
-                                      onMouseDown={(e) => e.preventDefault()}
-                                      onClick={() => { handleCellChange("title", opt); setShowNameSuggestions(false); }}
-                                    >
-                                      {opt}
-                                    </button>
-                                  ))
-                                ) : (
-                                  <p className="px-3 py-2 text-xs text-muted-foreground">No matching training contracts</p>
-                                )}
-                              </div>
-                            )}
-                          </div>
-
-                          <div>
-                            <Label className="mb-1.5 block">Contract Number *</Label>
-                            <Input
-                              placeholder="CN-XXX"
-                              className="h-10 text-sm font-mono"
-                              value={newRow.contractNumber}
-                              onChange={e => handleCellChange("contractNumber", e.target.value)}
-                            />
-                          </div>
-
-                          <div>
-                            <Label className="mb-1.5 block">Client Name *</Label>
-                            <Input
-                              placeholder="Client name"
-                              className="h-10 text-sm"
-                              value={newRow.clientName}
-                              onChange={e => handleCellChange("clientName", e.target.value)}
-                            />
-                          </div>
-
-                          <div>
-                            <Label className="mb-1.5 block">Type</Label>
-                            {isTypeRoute ? (
-                              <div className="h-10 px-3 flex items-center text-sm font-medium rounded-md bg-muted">{routeType}</div>
-                            ) : (
-                              <Select value={newRow.type} onValueChange={v => handleCellChange("type", v)}>
-                                <SelectTrigger className="h-10 text-sm"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                  {canCreateJmcs && <SelectItem value="JMCS">JMCS</SelectItem>}
-                                  {canCreateSis && <SelectItem value="SIS">SIS</SelectItem>}
-                                </SelectContent>
-                              </Select>
-                            )}
-                          </div>
-
-                          <div>
-                            <Label className="mb-1.5 block">Status</Label>
-                            <Select value={newRow.status} onValueChange={v => handleCellChange("status", v)}>
-                              <SelectTrigger className="h-10 text-sm"><SelectValue /></SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="pending">Pending</SelectItem>
-                                <SelectItem value="active">Active</SelectItem>
-                                <SelectItem value="completed">Completed</SelectItem>
-                                <SelectItem value="expired">Expired</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          <div>
-                            <Label className="mb-1.5 block">Start Date</Label>
-                            <Input
-                              type="date"
-                              className="h-10 text-sm"
-                              value={newRow.startDate}
-                              onChange={e => handleCellChange("startDate", e.target.value)}
-                            />
-                          </div>
-
-                          <div>
-                            <Label className="mb-1.5 block">End Date</Label>
-                            {newRow.type === "SIS" ? (
-                              <div className="h-10 px-3 flex items-center text-sm font-medium rounded-md bg-muted text-muted-foreground whitespace-nowrap overflow-hidden">
-                                {format(new Date(newRow.endDate), "MMM d, yyyy")}
-                                <span className="ml-2 text-[11px] text-muted-foreground/80">(renewed after 3 yrs)</span>
-                              </div>
-                            ) : (
-                              <Input
-                                type="date"
-                                className="h-10 text-sm"
-                                value={newRow.endDate}
-                                onChange={e => handleCellChange("endDate", e.target.value)}
-                              />
-                            )}
-                          </div>
-
-                          <div>
-                            <Label className="mb-1.5 block">Value (₱) *</Label>
-                            <Input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              placeholder="0.00"
-                              className="h-10 text-sm"
-                              value={newRow.value}
-                              onChange={e => handleCellChange("value", e.target.value)}
-                            />
-                          </div>
-
-                          <div className="sm:col-span-2">
-                            <Label className="mb-1.5 block">Contract Document</Label>
-                            <div className="flex items-center gap-2">
-                              <input
-                                ref={fileInputRef}
-                                type="file"
-                                accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                                className="hidden"
-                                onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
-                              />
-                              <Button
-                                type="button"
-                                variant="outline"
-                                className="h-10 text-sm"
-                                onClick={() => fileInputRef.current?.click()}
-                              >
-                                <Icon name="upload" className="mr-2" size={14} />
-                                {selectedFile ? "Change File" : "Choose File"}
-                              </Button>
-                              {selectedFile && (
-                                <span className="text-xs text-muted-foreground truncate max-w-[220px]" title={selectedFile.name}>
-                                  {selectedFile.name}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="sm:col-span-2 lg:col-span-3">
-                            <Label className="mb-1.5 block">Description</Label>
-                            <Textarea
-                              placeholder="Optional notes about this contract..."
-                              className="min-h-[90px] text-sm"
-                              value={newRow.description}
-                              onChange={e => handleCellChange("description", e.target.value)}
-                            />
-                          </div>
+                      )}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      <Input
+                        placeholder="Client name"
+                        aria-label="Client Name"
+                        className="h-8 text-xs"
+                        value={newRow.clientName}
+                        onChange={e => handleCellChange("clientName", e.target.value)}
+                        onKeyDown={handleAddRowKey}
+                      />
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell">
+                      {isTypeRoute ? (
+                        <div className="h-8 px-2 flex items-center text-xs font-mono text-muted-foreground rounded-md bg-muted">
+                          {routeType}
                         </div>
-
-                        <div className="flex items-center justify-end gap-2 pt-4 border-t border-border/60">
-                          <Button variant="outline" onClick={resetAddRow} disabled={createMutation.isPending}>
-                            Cancel
-                          </Button>
-                          <Button
-                            variant="success"
-                            disabled={!isAddValid || createMutation.isPending}
-                            onClick={() => createMutation.mutate()}
-                          >
-                            <Icon name="check" className="mr-2" size={16} />
-                            {createMutation.isPending ? "Saving..." : "Save Contract"}
-                          </Button>
-                        </div>
+                      ) : (
+                        <Select value={newRow.type} onValueChange={v => handleCellChange("type", v)}>
+                          <SelectTrigger className="h-8 text-xs" aria-label="Type"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {canCreateJmcs && <SelectItem value="JMCS">JMCS</SelectItem>}
+                            {canCreateSis && <SelectItem value="SIS">SIS</SelectItem>}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      <div className="flex flex-col gap-1">
+                        <Input
+                          type="date"
+                          aria-label="Start Date"
+                          className="h-7 text-xs"
+                          value={newRow.startDate}
+                          onChange={e => handleCellChange("startDate", e.target.value)}
+                        />
+                        <Input
+                          type="date"
+                          aria-label="End Date"
+                          className="h-7 text-xs"
+                          value={newRow.endDate}
+                          onChange={e => handleCellChange("endDate", e.target.value)}
+                        />
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Select value={newRow.status} onValueChange={v => handleCellChange("status", v)}>
+                        <SelectTrigger className="h-8 text-xs" aria-label="Status"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="active">Active</SelectItem>
+                          <SelectItem value="completed">Completed</SelectItem>
+                          <SelectItem value="expired">Expired</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        inputMode="decimal"
+                        placeholder="0.00"
+                        aria-label="Value"
+                        className="h-8 text-xs text-right tabular-nums"
+                        value={newRow.value}
+                        onChange={e => handleCellChange("value", e.target.value)}
+                        onKeyDown={handleAddRowKey}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-xs text-muted-foreground italic">—</span>
+                    </TableCell>
+                    <TableCell>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png,.txt"
+                        className="hidden"
+                        onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
+                      />
+                      {selectedFile ? (
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          title={selectedFile.name}
+                          className="flex items-center gap-1.5 max-w-full text-left text-xs text-muted-foreground hover:text-primary transition-colors"
+                        >
+                          <Icon name="paperclip" className="shrink-0" size={13} />
+                          <span className="truncate">{selectedFile.name}</span>
+                        </button>
+                      ) : (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-7 px-2 text-xs text-muted-foreground"
+                          onClick={() => fileInputRef.current?.click()}
+                        >
+                          <Icon name="paperclip" className="mr-1" size={13} />
+                          Attach file
+                        </Button>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          aria-label="Save contract"
+                          title={isAddValid ? "Save contract" : "Fill in Contract Name, Number, Client and Value"}
+                          className="h-7 w-7 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                          disabled={!isAddValid || createMutation.isPending}
+                          onClick={() => createMutation.mutate()}
+                        >
+                          <Icon name="check" size={16} />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          aria-label="Cancel"
+                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                          onClick={resetAddRow}
+                        >
+                          <Icon name="x" size={16} />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -704,8 +693,8 @@ export default function ContractsList() {
                       <TableCell className="hidden lg:table-cell"><Skeleton className="h-5 w-16 mx-auto" /></TableCell>
                       <TableCell><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
                       <TableCell className="text-right"><Skeleton className="h-4 w-20 ml-auto" /></TableCell>
-                      <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
-                      <TableCell className="hidden sm:table-cell"><Skeleton className="h-8 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-8 w-24" /></TableCell>
                       <TableCell><Skeleton className="h-8 w-8 rounded-md" /></TableCell>
                     </TableRow>
                   ))
@@ -732,7 +721,7 @@ export default function ContractsList() {
                   </TableRow>
                 ) : (
                   filteredContracts?.map((contract) => (
-                    <TableRow key={contract.id} className="group">
+                    <TableRow key={contract.id} className={`group ${selectedIds.has(contract.id) ? "row-selected" : ""}`}>
                       <TableCell>
                         <Checkbox
                           checked={selectedIds.has(contract.id)}
@@ -740,14 +729,15 @@ export default function ContractsList() {
                           aria-label={`Select ${contract.title}`}
                         />
                       </TableCell>
-                      <TableCell className="font-mono text-xs font-medium text-muted-foreground">
+                      <TableCell className="font-mono text-xs font-medium text-muted-foreground break-words">
                         {contract.contractNumber}
                       </TableCell>
-                      <TableCell>
-                        <div className="font-medium text-foreground">{contract.title}</div>
+
+                      <TableCell className="min-w-[220px]">
+                        <div className="font-medium text-foreground break-words">{contract.title}</div>
                       </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        {contract.clientName || <span className="text-muted-foreground italic">Unspecified</span>}
+                      <TableCell className="hidden md:table-cell min-w-[160px]">
+                        <div className="break-words">{contract.clientName || <span className="text-muted-foreground italic">Unspecified</span>}</div>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
                         {getTypeBadge(contract.type)}
@@ -762,7 +752,7 @@ export default function ContractsList() {
                       <TableCell>
                         {getStatusBadge(contract.status)}
                       </TableCell>
-                      <TableCell className="text-right font-medium">
+                      <TableCell className="text-right font-medium tabular">
                         {formatCurrency(contract.value) ?? <span className="text-muted-foreground italic">—</span>}
                       </TableCell>
                       <TableCell>
@@ -774,7 +764,7 @@ export default function ContractsList() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="hidden sm:table-cell">
+                      <TableCell>
                         <DocPreview contract={contract as any} />
                       </TableCell>
                       <TableCell>
@@ -828,9 +818,9 @@ export default function ContractsList() {
               </TableBody>
             </Table>
           </div>
-          
-          <div className="p-4 border-t bg-muted/10 text-xs text-muted-foreground flex justify-between items-center">
-            <span>
+           
+          <div className="surface-sunken flex items-center justify-between border-t px-4 py-3 text-xs text-muted-foreground">
+            <span className="tabular">
               Showing {filteredContracts?.length || 0} {filteredContracts?.length === 1 ? 'contract' : 'contracts'}
             </span>
           </div>
@@ -857,6 +847,15 @@ export default function ContractsList() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <ContractsImportDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        onImported={() => {
+          queryClient.invalidateQueries({ queryKey: getListContractsQueryKey() });
+          queryClient.invalidateQueries({ queryKey: ["contracts-analysis"] });
+        }}
+        defaultType={(routeType || "JMCS") as "JMCS" | "SIS"}
+      />
       <SaveProgressIndicator saving={createMutation.isPending} label="Creating contract..." />
       <SaveProgressIndicator saving={bulkDeleteMutation.isPending} label="Deleting contracts..." />
       <UploadProgressOverlay uploading={uploadProgress.uploading} progress={uploadProgress.progress} fileName={uploadProgress.fileName} fileSize={uploadProgress.fileSize} />
@@ -868,8 +867,21 @@ function DocPreview({ contract }: { contract: { documentName?: string | null; do
   const name = contract.documentName ?? null;
   const url = contract.documentUrl ?? null;
 
-  if (!name || !url) {
+  if (!name) {
     return <span className="text-xs text-muted-foreground">—</span>;
+  }
+
+  // Document exists but its download URL could not be signed (e.g. storage
+  // config issue) — still show the file name so users know a doc is attached.
+  if (!url) {
+    return (
+      <span className="flex items-center gap-2 max-w-[180px]" title={name ?? undefined}>
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-muted/40">
+          <Icon name="file-text" size={16} className="text-muted-foreground" />
+        </span>
+        <span className="max-w-[130px] truncate text-xs text-muted-foreground">{name}</span>
+      </span>
+    );
   }
 
   const ext = name.split(".").pop()?.toLowerCase();
