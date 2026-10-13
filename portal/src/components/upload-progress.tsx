@@ -25,7 +25,7 @@ export function UploadProgressOverlay({ uploading, progress, fileName, fileSize,
     <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-4 fade-in duration-300">
       <div className="surface rounded-lg p-4 w-72 shadow-lg">
         <div className="flex items-center gap-3 mb-3">
-          <div className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 ${isComplete ? "tone-success" : "surface-sunken text-primary"}`}>
+          <div className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 ${isComplete ? "bg-tone-success text-tone-success-fg" : "surface-sunken text-primary"}`}>
             <Icon name={isComplete ? "check-circle" : "upload-cloud"} size={18} />
           </div>
           <div className="flex-1 min-w-0">

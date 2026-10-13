@@ -73,15 +73,16 @@ interface StatusBadgeProps {
 }
 
 /**
- * Status pill. Colour comes from the status vocabulary rather than a
- * per-page palette, so the same state is the same colour everywhere.
+ * Status label. The hue comes from the status vocabulary rather than a
+ * per-page palette, so the same state is the same colour everywhere. Styling
+ * lives in `.tone-*` (see index.css): a flat label with a leading dot.
  */
 export function StatusBadge({ status, label, className }: StatusBadgeProps) {
   const tone = toneFor(status);
   return (
     <Badge
       variant="outline"
-      className={`font-normal ${toneClass[tone]} ${className ?? ""}`}
+      className={`${toneClass[tone]} ${className ?? ""}`}
     >
       {label ?? statusLabel(status)}
     </Badge>
@@ -94,10 +95,27 @@ interface TonePillProps {
   className?: string;
 }
 
-/** Tone pill for counts and summaries that are not a status (e.g. "3 duplicates"). */
+/**
+ * Compact tone chip for counts and short markers that sit inline next to a
+ * title (e.g. a "3" beside "Action Required"). Kept visually distinct from the
+ * flat status label so it reads as a quantity, not a state.
+ */
+const toneChip: Record<Tone, string> = {
+  neutral: "bg-muted text-muted-foreground",
+  info: "bg-tone-info text-tone-info-fg",
+  progress: "bg-tone-progress text-tone-progress-fg",
+  success: "bg-tone-success text-tone-success-fg",
+  warning: "bg-tone-warning text-tone-warning-fg",
+  danger: "bg-tone-danger text-tone-danger-fg",
+};
+
+/** Tone chip for counts and summaries that are not a status (e.g. "3 duplicates"). */
 export function TonePill({ tone, children, className }: TonePillProps) {
   return (
-    <Badge variant="outline" className={`font-normal ${toneClass[tone]} ${className ?? ""}`}>
+    <Badge
+      variant="outline"
+      className={`border-transparent px-1.5 font-medium tabular ${toneChip[tone]} ${className ?? ""}`}
+    >
       {children}
     </Badge>
   );
