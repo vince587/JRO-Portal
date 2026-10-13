@@ -37,22 +37,16 @@ export function categoryColor(key: string | null | undefined): string {
 }
 
 /**
- * Inline style for a category chip: a 14% wash of the category colour behind
- * full-strength text, with a faint border of the same hue. Use this when the
- * element is a plain tag rather than a <Badge>.
+ * Inline style for a category tag. Flat by design: the hue is carried by the
+ * text and a leading dot, never by a pastel fill or tinted border.
  */
 export function categoryChipStyle(key: string | null | undefined): React.CSSProperties {
-  const colour = categoryColor(key);
-  return {
-    backgroundColor: `color-mix(in oklab, ${colour} 14%, transparent)`,
-    borderColor: `color-mix(in oklab, ${colour} 28%, transparent)`,
-    color: colour,
-  };
+  return { color: categoryColor(key) };
 }
 
 /**
- * Filled chip in a category colour: a 14% wash behind text in the full colour.
- * Unlike a tone chip, the hue is the point - do not collapse it onto a tone.
+ * Category label: a colored dot plus the category name. The dot carries the
+ * hue so siblings stay distinguishable without a filled chip.
  */
 export function CategoryChip({
   category,
@@ -68,10 +62,10 @@ export function CategoryChip({
   return (
     <Badge
       variant="outline"
-      className={cn("font-normal", className)}
+      className={cn("gap-1.5 border-transparent bg-transparent font-medium", className)}
       style={categoryChipStyle(category)}
     >
-      {icon}
+      {icon ?? <CategoryDot category={category} />}
       {label ?? categoryLabel(category)}
     </Badge>
   );
@@ -88,7 +82,7 @@ export function CategoryDot({
   return (
     <span
       aria-hidden
-      className={cn("inline-block size-2.5 shrink-0 rounded-full", className)}
+      className={cn("inline-block size-2 shrink-0 rounded-full", className)}
       style={{ backgroundColor: categoryColor(category) }}
     />
   );
