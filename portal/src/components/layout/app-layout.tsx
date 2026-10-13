@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import TutorialOverlay from "@/components/tutorial-overlay";
+import { UserAvatar } from "@/components/user-avatar";
 import { Icon } from "@/components/ui/icon";
 import { useLogout } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
@@ -515,9 +516,12 @@ export function AppLayout({ children }: { children: ReactNode }) {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="flex items-center gap-2 hover:opacity-80 transition-opacity focus:outline-none">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 ring-2 ring-emerald-100 dark:bg-emerald-950 dark:ring-emerald-900">
-                      <Icon name="user" size={18} />
-                    </div>
+                    <UserAvatar
+                      name={user?.fullName || user?.username}
+                      photoUrl={(user as any)?.photoUrl}
+                      className="h-9 w-9 ring-2 ring-emerald-100 dark:ring-emerald-900"
+                      fallbackClassName="bg-emerald-50 text-emerald-600 text-xs font-semibold dark:bg-emerald-950 dark:text-emerald-400"
+                    />
                     <div className="hidden sm:flex flex-col items-start leading-tight">
                       <span className="text-sm font-bold text-foreground truncate max-w-[120px]">{user?.fullName || user?.username}</span>
                       <span className="text-[10px] font-semibold text-muted-foreground uppercase">{formatRole(user?.role)}</span>

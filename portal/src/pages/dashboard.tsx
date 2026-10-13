@@ -162,16 +162,6 @@ export default function Dashboard() {
             Good {greeting}, {user?.fullName?.split(" ")[0] || "there"}
           </>
         }
-        description={
-          <>
-            {(user as any)?.department
-              ? (user as any).department === "Both"
-                ? "SIS & JMCS"
-                : (user as any).department
-              : "Company"}{" "}
-            records at a glance. Track contracts, certificates and expiries below.
-          </>
-        }
         trailing={
           <div className="text-left sm:text-right">
             <p className="text-2xl font-semibold leading-none tabular">
