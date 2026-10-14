@@ -4,6 +4,7 @@ import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/lib/auth-context";
+import { BannerThemeProvider } from "@/lib/banner-theme";
 import { AppLayout } from "@/components/layout/app-layout";
 import { UpdateNotifier } from "@/components/update-notifier";
 import { SseInit } from "@/hooks/use-sse";
@@ -411,14 +412,16 @@ function App() {
       <ThemeProvider attribute="class" forcedTheme="light" defaultTheme="light" disableTransitionOnChange>
         <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <AuthenticatedSseInit />
-          <TooltipProvider>
-            <WouterRouter>
-              <Router />
-            </WouterRouter>
-            <UpdateNotifier />
-            <Toaster />
-          </TooltipProvider>
+          <BannerThemeProvider>
+            <AuthenticatedSseInit />
+            <TooltipProvider>
+              <WouterRouter>
+                <Router />
+              </WouterRouter>
+              <UpdateNotifier />
+              <Toaster />
+            </TooltipProvider>
+          </BannerThemeProvider>
         </AuthProvider>
       </QueryClientProvider>
     </ThemeProvider>

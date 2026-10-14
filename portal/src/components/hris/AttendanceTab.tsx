@@ -44,6 +44,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+import { useAuth } from "@/lib/auth-context";
+
 function statusBadge(status: string) {
   const cls =
     status === "approved" ? "tone-success" :
@@ -57,6 +59,7 @@ interface AttendanceTabProps {
 }
 
 export function AttendanceTab({ isAdmin }: AttendanceTabProps) {
+  const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const { data: timesheets } = useTimesheets();
   const { data: report } = useAttendanceReport(undefined, undefined, { enabled: isAdmin });
@@ -200,7 +203,10 @@ export function AttendanceTab({ isAdmin }: AttendanceTabProps) {
       )}
 
       {/* Edit Time Card */}
-      {isAdmin && (
+      {isAdmin && !(() => {
+        const name = (currentUser?.fullName || currentUser?.username || "").toLowerCase();
+        return name.includes("charlene") || name.includes("jason");
+      })() && (
         <Card>
           <CardHeader className="pb-3 border-b">
             <CardTitle className="text-base flex items-center gap-2">

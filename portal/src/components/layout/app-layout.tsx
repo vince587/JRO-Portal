@@ -23,6 +23,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
+import { useBannerTheme } from "@/lib/banner-theme";
 import {
   CommandDialog,
   CommandEmpty,
@@ -184,14 +185,22 @@ type NavItem = {
 };
 
 function SidebarNavItem({ item, active, collapsed }: { item: NavItem; active: boolean; collapsed: boolean }) {
+  const { theme } = useBannerTheme();
+  const accentStyle = active && theme.accent ? { backgroundColor: theme.accent } : undefined;
+  const accentClass = active && theme.accent ? "" : active ? "bg-primary" : "";
+
   if (collapsed) {
     return (
       <div className="group/item relative flex justify-center" title={item.title}>
         <Link
           href={item.url}
+          style={accentStyle}
           className={[
             "relative flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-150",
-            active ? "bg-primary text-white shadow-xs" : "text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-foreground",
+            accentClass || !active ? "text-white" : "",
+            active
+              ? "text-white shadow-xs"
+              : "text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-foreground",
           ].join(" ")}
         >
           <Icon name={item.icon} size={18} />
@@ -210,10 +219,11 @@ function SidebarNavItem({ item, active, collapsed }: { item: NavItem; active: bo
     <Link
       href={item.url}
       aria-current={active ? "page" : undefined}
+      style={accentStyle}
       className={[
         "group/nav relative flex w-full items-center gap-3 rounded-2xl px-4 py-2.5 text-[13px] font-semibold transition-all duration-150",
         active
-          ? "bg-primary text-white shadow-xs font-semibold"
+          ? "text-white shadow-xs font-semibold"
           : "text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-foreground font-medium",
       ].join(" ")}
     >
@@ -244,6 +254,7 @@ function AppSidebar({ collapsed = false }: { collapsed?: boolean }) {
   const [location] = useLocation();
   const { user } = useAuth();
   const { data: notifications = [] } = useNotifications();
+  const { theme } = useBannerTheme();
   const navItems = useNavItems();
 
   const notificationIconName = (type: string) => {
@@ -354,9 +365,11 @@ function AppSidebar({ collapsed = false }: { collapsed?: boolean }) {
       <div className="relative z-10 mt-auto shrink-0 border-t border-sidebar-border pt-3 space-y-1">
         <Link
           href="/profile"
+          style={location === "/profile" && theme.accent ? { backgroundColor: theme.accent } : undefined}
           className={[
             "flex w-full items-center gap-3 rounded-xl px-3.5 py-2 text-xs font-semibold transition-colors",
-            location === "/profile" ? "bg-primary text-white shadow-xs" : "text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-foreground",
+            location === "/profile" ? "text-white shadow-xs" : "text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-foreground",
+            location === "/profile" && !theme.accent ? "bg-primary" : "",
             collapsed ? "justify-center" : "",
           ].join(" ")}
         >
@@ -482,6 +495,21 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <div className="flex h-screen w-full bg-background overflow-hidden">
         <SidebarShell />
         <div className="flex flex-1 flex-col min-w-0 overflow-hidden relative">
+          {/* Festive garland hanging just below header division line */}
+          {location === "/" && (
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 z-20 h-10"
+              style={{
+                top: "4rem",
+                transform: "translateY(0)",
+                backgroundImage: "url('/christmas.png')",
+                backgroundRepeat: "repeat-x",
+                backgroundSize: "auto 100%",
+                backgroundPosition: "center top",
+              }}
+            />
+          )}
           {location === "/" && (
           <header className="surface sticky top-0 z-10 flex h-16 shrink-0 items-center overflow-hidden border-b px-4 md:px-6">
             {/* PickleDash Left Header Info */}

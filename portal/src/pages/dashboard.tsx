@@ -18,6 +18,7 @@ import { PieChart as RePieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Cartesi
 import { useAuth } from "@/lib/auth-context";
 import { StatTile, Banner } from "@/components/stat-tile";
 import { TonePill, toneHex, type Tone } from "@/components/status-badge";
+import { SnowEffect } from "@/components/snow-effect";
 
 const COLORS = ["#3b82f6", "#f59e0b", "#10b981", "#ef4444"];
 
@@ -66,23 +67,19 @@ export default function Dashboard() {
           value={stats.totalContracts}
           icon="file-text"
           tone="success"
-          detail="across all clients"
-          detailTone="success"
         />
         <StatTile
           label="Active Contracts"
           value={stats.activeContracts}
           icon="calendar"
           tone="info"
-          detail="currently in effect"
-          detailTone="info"
         />
         <StatTile
           label="Available Certificates"
           value={`${validCerts} / ${totalCerts}`}
           icon="shield-check"
           tone="warning"
-          detail={expiringCerts > 0 ? `${expiringCerts} expiring soon` : "Open for booking"}
+          detail={expiringCerts > 0 ? `${expiringCerts} expiring soon` : undefined}
           detailTone="warning"
         />
         <StatTile
@@ -90,24 +87,18 @@ export default function Dashboard() {
           value={`₱${((stats as any).totalContractValue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
           icon="trending-up"
           tone="success"
-          detail="total contract value"
-          detailTone="success"
         />
         <StatTile
           label="Active Projects"
           value={stats.activeProjects}
           icon="briefcase"
           tone="info"
-          detail="currently in progress"
-          detailTone="info"
         />
         <StatTile
           label="Active Leads"
           value={(stats as any).totalLeads ?? 0}
           icon="target"
           tone="progress"
-          detail="in pipeline"
-          detailTone="progress"
         />
       </>
     );
@@ -154,21 +145,13 @@ export default function Dashboard() {
 
   return (
     <div data-page="dashboard" className="space-y-6">
+      <SnowEffect />
       {/* Welcome banner */}
       <Banner
-        watermark="line-chart"
         title={
           <>
             Good {greeting}, {user?.fullName?.split(" ")[0] || "there"}
           </>
-        }
-        trailing={
-          <div className="text-left sm:text-right">
-            <p className="text-2xl font-semibold leading-none tabular">
-              {format(new Date(), "hh:mm a")}
-            </p>
-            <p className="mt-1 text-xs opacity-80">{format(new Date(), "EEEE, MMM d")}</p>
-          </div>
         }
       />
 

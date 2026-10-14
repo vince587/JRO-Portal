@@ -47,7 +47,12 @@ function mapContract(c: ContractDoc) {
     endDate: c.endDate,
     value: Number(c.value),
     description: c.description,
-    assignedTo: c.assignedTo,
+    assignedTo: c.assignedTo ?? c.salesInCharge ?? null,
+    salesInCharge: c.salesInCharge ?? c.assignedTo ?? null,
+    contactPerson: c.contactPerson ?? null,
+    designation: c.designation ?? null,
+    contactNumber: c.contactNumber ?? null,
+    contactEmail: c.contactEmail ?? null,
     createdById: c.createdById,
     createdByName: c.createdByName,
     createdByPhotoUrl: c.createdByPhotoUrl ?? null,
@@ -116,6 +121,11 @@ router.post("/contracts", requirePermission("canManageContracts"), async (req, r
     createdById: req.currentUser!.id,
     createdByName: creatorName,
     createdByPhotoUrl: req.currentUser!.photoUrl ?? null,
+    contactPerson: (req.body as any).contactPerson ? cleanText((req.body as any).contactPerson) : null,
+    designation: (req.body as any).designation ? cleanText((req.body as any).designation) : null,
+    contactNumber: (req.body as any).contactNumber ? cleanText((req.body as any).contactNumber) : null,
+    contactEmail: (req.body as any).contactEmail ? cleanText((req.body as any).contactEmail) : null,
+    salesInCharge: (req.body as any).salesInCharge ? cleanText((req.body as any).salesInCharge) : ((req.body as any).assignedTo ? cleanText((req.body as any).assignedTo) : null),
     createdAt: now,
     updatedAt: now,
   } as ContractDoc);
@@ -162,6 +172,11 @@ router.patch("/contracts/:id", requirePermission("canManageContracts"), async (r
     updatedAt: new Date().toISOString(),
   };
   if (parsed.data.value !== undefined) updateData.value = Number(parsed.data.value);
+  if ((req.body as any).contactPerson !== undefined) updateData.contactPerson = (req.body as any).contactPerson ? cleanText((req.body as any).contactPerson) : null;
+  if ((req.body as any).designation !== undefined) updateData.designation = (req.body as any).designation ? cleanText((req.body as any).designation) : null;
+  if ((req.body as any).contactNumber !== undefined) updateData.contactNumber = (req.body as any).contactNumber ? cleanText((req.body as any).contactNumber) : null;
+  if ((req.body as any).contactEmail !== undefined) updateData.contactEmail = (req.body as any).contactEmail ? cleanText((req.body as any).contactEmail) : null;
+  if ((req.body as any).salesInCharge !== undefined) updateData.salesInCharge = (req.body as any).salesInCharge ? cleanText((req.body as any).salesInCharge) : null;
   await updateDoc("contracts", id, updateData);
   const updated = await getDoc<ContractDoc>("contracts", id);
   await createDoc("activity", {
@@ -249,6 +264,7 @@ const MAX_IMPORT_ROWS = 2000;
 
 interface RawContractRow {
   title?: unknown;
+  services?: unknown;
   contractNumber?: unknown;
   clientName?: unknown;
   type?: unknown;
@@ -259,6 +275,11 @@ interface RawContractRow {
   description?: unknown;
   assignedTo?: unknown;
   date?: unknown;
+  contactPerson?: unknown;
+  designation?: unknown;
+  contactNumber?: unknown;
+  contactEmail?: unknown;
+  salesInCharge?: unknown;
 }
 
 interface NormalizedContract {
@@ -271,10 +292,26 @@ interface NormalizedContract {
   endDate: string;
   value: number | null;
   description: string | null;
+  contactPerson: string | null;
+  designation: string | null;
+  contactNumber: string | null;
+  contactEmail: string | null;
+  salesInCharge: string | null;
 }
 
 function coerceContractStatus(v: unknown): string | null {
   return coerceEnum(v, CONTRACT_STATUSES);
+}
+
+function extractDateFromRef(ref: string): string | null {
+  const m = String(ref).match(/(\d{4})\s*-*\s*(\d{2})(\d{2})/);
+  if (m) {
+    const yyyy = m[1];
+    const mm = m[2];
+    const dd = m[3];
+    return `${yyyy}-${mm}-${dd}`;
+  }
+  return null;
 }
 
 /** End dates default by business unit: SIS certification runs 3 years, JMCS 1. */
@@ -289,18 +326,27 @@ function normalizeContractRow(raw: RawContractRow, defaultType: "JMCS" | "SIS"):
   // Type and Status are frequently swapped or mislabelled in exported sheets,
   // so both are sniffed by value rather than trusted by header name.
   const type = coerceContractType(raw.type) ?? coerceContractType(raw.status) ?? defaultType;
-  const status = coerceContractStatus(raw.status) ?? coerceContractStatus(raw.type) ?? "pending";
-  const startDate = coerceDate(raw.startDate) ?? coerceDate(raw.date) ?? new Date().toISOString().slice(0, 10);
+  const status = coerceContractStatus(raw.status) ?? coerceContractStatus(raw.type) ?? "active";
+  const contractNumber = cleanText(raw.contractNumber);
+  const clientName = cleanText(raw.clientName);
+  const title = cleanText(raw.title) || cleanText(raw.services) || (clientName ? `${clientName} Services` : "General Services");
+  const extractedDate = extractDateFromRef(contractNumber);
+  const startDate = coerceDate(raw.startDate) ?? coerceDate(raw.date) ?? extractedDate ?? new Date().toISOString().slice(0, 10);
   return {
-    title: cleanText(raw.title),
-    contractNumber: cleanText(raw.contractNumber),
-    clientName: cleanText(raw.clientName),
+    title,
+    contractNumber,
+    clientName,
     type,
     status,
     startDate,
     endDate: coerceDate(raw.endDate) ?? addYears(startDate, type === "SIS" ? 3 : 1),
-    value: coerceMoney(raw.value),
+    value: coerceMoney(raw.value) ?? 0,
     description: cleanText(raw.description) || null,
+    contactPerson: cleanText(raw.contactPerson) || null,
+    designation: cleanText(raw.designation) || null,
+    contactNumber: cleanText(raw.contactNumber) || null,
+    contactEmail: cleanText(raw.contactEmail) || null,
+    salesInCharge: cleanText(raw.salesInCharge) || cleanText(raw.assignedTo) || null,
   };
 }
 
@@ -327,11 +373,9 @@ function validateContractRows(
   return rows.map((raw, index) => {
     const contract = normalizeContractRow(raw, defaultType);
     const errors: string[] = [];
-    if (!contract.title) errors.push("Contract Name is required");
-    if (!contract.contractNumber) errors.push("Contract Number is required");
-    if (!contract.clientName) errors.push("Client Name is required");
-    if (contract.value === null) errors.push("Value is required");
-    else if (contract.value < 0) errors.push("Value cannot be negative");
+    if (!contract.contractNumber) errors.push("Reference Number is required");
+    if (!contract.clientName) errors.push("Company Name is required");
+    if (contract.value !== null && contract.value < 0) errors.push("Price cannot be negative");
     if (contract.endDate < contract.startDate) errors.push("End Date is before Start Date");
     return { index, contract, errors, duplicateKey: contractDedupeKey(contract) };
   });
@@ -427,7 +471,12 @@ router.post("/contracts/import", requirePermission("canManageContracts"), async 
       endDate: c.endDate,
       value: c.value ?? 0,
       description: c.description,
-      assignedTo: null,
+      contactPerson: c.contactPerson,
+      designation: c.designation,
+      contactNumber: c.contactNumber,
+      contactEmail: c.contactEmail,
+      salesInCharge: c.salesInCharge,
+      assignedTo: c.salesInCharge || null,
       createdById: user.id,
       createdByName: creatorName,
       createdByPhotoUrl: user.photoUrl ?? null,

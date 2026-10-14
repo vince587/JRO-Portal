@@ -581,6 +581,12 @@ function mapAdminAttendance(a: AttendanceDoc) {
 // Create or update an employee's clock-in/out for a specific date (used when an
 // employee forgot to clock in/out). A provided empty string clears that field.
 router.post("/admin/attendance", async (req, res) => {
+  const actorName = ((req.currentUser?.fullName || req.currentUser?.username || "") as string).toLowerCase();
+  if (actorName.includes("charlene") || actorName.includes("jason")) {
+    res.status(403).json({ error: "Attendance editing capability is currently disabled for your account." });
+    return;
+  }
+
   const parsed = AttendanceEditSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const { userId, date } = parsed.data;
@@ -653,6 +659,12 @@ router.post("/admin/attendance", async (req, res) => {
 });
 
 router.delete("/admin/attendance/:id", async (req, res) => {
+  const actorName = ((req.currentUser?.fullName || req.currentUser?.username || "") as string).toLowerCase();
+  if (actorName.includes("charlene") || actorName.includes("jason")) {
+    res.status(403).json({ error: "Attendance deletion capability is currently disabled for your account." });
+    return;
+  }
+
   const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const existing = await getDoc<AttendanceDoc>("attendance", id);
   if (!existing) { res.status(404).json({ error: "Attendance record not found" }); return; }

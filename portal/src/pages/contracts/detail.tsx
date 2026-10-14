@@ -59,7 +59,7 @@ import {
 import { UserAvatar } from "@/components/user-avatar";
 
 const contractSchema = z.object({
-  title: z.string().min(1, "Contract name is required"),
+  title: z.string().min(1, "Services / Contract name is required"),
   type: z.enum(["SIS", "JMCS"] as const),
   serviceType: z.string().optional(),
   status: z.enum(["active", "pending", "completed", "expired"] as const),
@@ -70,6 +70,11 @@ const contractSchema = z.object({
   value: z.coerce.number().min(0, "Value must be positive"),
   description: z.string().optional().nullable(),
   assignedTo: z.string().optional().nullable(),
+  contactPerson: z.string().optional().nullable(),
+  designation: z.string().optional().nullable(),
+  contactNumber: z.string().optional().nullable(),
+  contactEmail: z.string().optional().nullable(),
+  salesInCharge: z.string().optional().nullable(),
 });
 
 type ContractFormValues = z.infer<typeof contractSchema>;
@@ -127,6 +132,11 @@ export default function ContractDetail() {
       value: 0,
       description: "",
       assignedTo: "",
+      contactPerson: "",
+      designation: "",
+      contactNumber: "",
+      contactEmail: "",
+      salesInCharge: "",
     },
   });
 
@@ -156,7 +166,12 @@ export default function ContractDetail() {
         endDate: contract.endDate.split('T')[0],
         value: contract.value,
         description: contract.description || "",
-        assignedTo: contract.assignedTo || "",
+        assignedTo: (contract as any).salesInCharge || contract.assignedTo || "",
+        contactPerson: (contract as any).contactPerson || "",
+        designation: (contract as any).designation || "",
+        contactNumber: (contract as any).contactNumber || "",
+        contactEmail: (contract as any).contactEmail || "",
+        salesInCharge: (contract as any).salesInCharge || contract.assignedTo || "",
       });
     }
   }, [contract, isNew, form]);
@@ -528,6 +543,91 @@ export default function ContractDetail() {
                   )}
                 />
                 
+                <FormField
+                  control={form.control}
+                  name="contactPerson"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2">
+                        <Icon name="user" className="text-muted-foreground" size={16} />
+                        Contact Person
+                      </FormLabel>
+                      <FormControl>
+                        <Input {...field} value={field.value || ""} disabled={!isEditing} placeholder="e.g. MS. AIZA GUERINA" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="designation"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2">
+                        <Icon name="briefcase" className="text-muted-foreground" size={16} />
+                        Designation
+                      </FormLabel>
+                      <FormControl>
+                        <Input {...field} value={field.value || ""} disabled={!isEditing} placeholder="e.g. DOCUMENTATION OFFICER" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="contactNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2">
+                        <Icon name="phone" className="text-muted-foreground" size={16} />
+                        Contact Number
+                      </FormLabel>
+                      <FormControl>
+                        <Input {...field} value={field.value || ""} disabled={!isEditing} placeholder="e.g. 8521-4975" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="contactEmail"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2">
+                        <Icon name="mail" className="text-muted-foreground" size={16} />
+                        Email Address
+                      </FormLabel>
+                      <FormControl>
+                        <Input {...field} value={field.value || ""} disabled={!isEditing} placeholder="e.g. contact@company.com" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="salesInCharge"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2">
+                        <Icon name="user-check" className="text-muted-foreground" size={16} />
+                        Sales In Charge
+                      </FormLabel>
+                      <FormControl>
+                        <Input {...field} value={field.value || ""} disabled={!isEditing} placeholder="e.g. Alexa" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 <FormField
                   control={form.control}
                   name="assignedTo"

@@ -1,7 +1,8 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/utils";
-import { toneHex, type Tone } from "@/components/status-badge";
+import { toneHex, toneFg, type Tone } from "@/components/status-badge";
+import { useBannerTheme } from "@/lib/banner-theme";
 
 interface StatTileProps {
   /** Small uppercase label. Reads as a category, not a sentence. */
@@ -48,8 +49,8 @@ export function StatTile({
           <span
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl transition-transform"
             style={{
-              backgroundColor: `color-mix(in oklab, ${toneHex(tone)} 15%, transparent)`,
-              color: toneHex(tone),
+              backgroundColor: `color-mix(in oklab, ${toneHex(tone)} 55%, transparent)`,
+              color: toneFg(tone),
             }}
           >
             <Icon name={icon} size={20} strokeWidth={2.2} />
@@ -64,7 +65,7 @@ export function StatTile({
         {detail && (
           <p
             className="mt-2 text-xs font-semibold flex items-center gap-1.5"
-            style={{ color: toneHex(detailTone) }}
+            style={{ color: toneFg(detailTone) }}
           >
             {detail}
           </p>
@@ -86,6 +87,7 @@ interface BannerProps {
 
 /**
  * Solid forest green brand banner with high border radius (rounded-3xl).
+ * Supports optional theme background image via BannerThemeProvider.
  */
 export function Banner({
   title,
@@ -94,8 +96,26 @@ export function Banner({
   watermark,
   className,
 }: BannerProps) {
+  const { theme } = useBannerTheme();
+
+  const hasTheme = !!theme.url;
+  const style: CSSProperties | undefined = hasTheme
+    ? {
+        backgroundImage: `linear-gradient(rgba(6, 40, 23, 0.15), rgba(6, 40, 23, 0.15)), url("${theme.url}")`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }
+    : undefined;
+
   return (
-    <section className={cn("relative overflow-hidden rounded-3xl bg-primary text-primary-foreground p-6 sm:p-8 shadow-sm", className)}>
+    <section
+      className={cn(
+        "relative overflow-hidden rounded-3xl text-primary-foreground p-6 sm:p-8 shadow-sm",
+        !hasTheme && "bg-primary",
+        className,
+      )}
+      style={style}
+    >
       {watermark && (
         <Icon
           name={watermark}

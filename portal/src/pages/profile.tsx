@@ -11,6 +11,8 @@ import { Icon } from "@/components/ui/icon"
 import { hasConfig as hasFirebase } from "@/lib/firebase";
 import { useFirebaseUpload } from "@/hooks/use-firebase-upload";
 import { UploadProgressOverlay, SaveProgressIndicator } from "@/components/upload-progress";
+import { BANNER_THEMES, useBannerTheme } from "@/lib/banner-theme";
+import { cn } from "@/lib/utils";
 
 function formatRole(role?: string | null) {
   if (!role) return "Member";
@@ -204,9 +206,68 @@ export default function Profile() {
         </CardContent>
       </Card>
 
+      <BannerThemePicker />
+
       <UploadProgressOverlay uploading={uploading} progress={uploadProgress} fileName={fileName} fileSize={fileSize} />
       <SaveProgressIndicator saving={profileMutation.isPending} label="Saving profile..." />
       <SaveProgressIndicator saving={passwordMutation.isPending} label="Changing password..." />
     </div>
+  );
+}
+
+function BannerThemePicker() {
+  const { themeKey, setThemeKey } = useBannerTheme();
+
+  return (
+    <Card className="surface rounded-lg">
+      <CardHeader className="border-b">
+        <CardTitle className="flex items-center gap-2">
+          <Icon name="palette" className="text-primary" size={20} />
+          Banner Theme
+        </CardTitle>
+        <CardDescription>Choose a background for the dashboard greeting banner</CardDescription>
+      </CardHeader>
+      <CardContent className="pt-6">
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+          {BANNER_THEMES.map((t) => {
+            const active = themeKey === t.key;
+            return (
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => setThemeKey(t.key)}
+                className={cn(
+                  "group relative flex flex-col items-center gap-2 rounded-xl border-2 p-2 transition-all",
+                  active
+                    ? "border-primary bg-primary/5 shadow-sm"
+                    : "border-transparent hover:border-border hover:bg-muted/40",
+                )}
+              >
+                <div
+                  className="h-14 w-full rounded-lg overflow-hidden border border-border/50 shadow-xs"
+                  style={
+                    t.url
+                      ? {
+                          backgroundImage: `linear-gradient(rgba(6,40,23,0.15), rgba(6,40,23,0.15)), url("${t.url}")`,
+                          backgroundSize: "cover",
+                          backgroundPosition: "center",
+                        }
+                      : { backgroundColor: "var(--color-primary)" }
+                  }
+                />
+                <span className="text-[11px] font-medium text-foreground leading-tight text-center">
+                  {t.label}
+                </span>
+                {active && (
+                  <span className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-white shadow-sm">
+                    <Icon name="check" size={12} strokeWidth={3} />
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
   );
 }

@@ -151,6 +151,11 @@ export default function ContractsList() {
     endDate: (routeType === "SIS" ? addYearsStr(todayStr(), 3) : nextYearStr()),
     value: "",
     description: "",
+    contactPerson: "",
+    designation: "",
+    contactNumber: "",
+    contactEmail: "",
+    salesInCharge: "",
   });
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -235,7 +240,7 @@ export default function ContractsList() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title: newRow.title,
+          title: newRow.title || (newRow.clientName ? `${newRow.clientName} Services` : "General Services"),
           type: newRow.type,
           status: newRow.status,
           contractNumber: newRow.contractNumber,
@@ -244,6 +249,11 @@ export default function ContractsList() {
           endDate: newRow.endDate,
           value: Number(newRow.value) || 0,
           description: newRow.description || undefined,
+          contactPerson: newRow.contactPerson || undefined,
+          designation: newRow.designation || undefined,
+          contactNumber: newRow.contactNumber || undefined,
+          contactEmail: newRow.contactEmail || undefined,
+          salesInCharge: newRow.salesInCharge || undefined,
         }),
       });
       if (!res.ok) {
@@ -277,6 +287,11 @@ export default function ContractsList() {
         endDate: (routeType === "SIS" ? addYearsStr(todayStr(), 3) : nextYearStr()),
         value: "",
         description: "",
+        contactPerson: "",
+        designation: "",
+        contactNumber: "",
+        contactEmail: "",
+        salesInCharge: "",
       });
       clearSelectedFile();
       toast({ title: "Contract created" });
@@ -289,10 +304,16 @@ export default function ContractsList() {
   const filteredContracts = contracts?.filter(contract => {
     if (!searchTerm) return true;
     const lowerSearch = searchTerm.toLowerCase();
+    const anyC = contract as any;
     return (
       contract.title.toLowerCase().includes(lowerSearch) ||
       contract.contractNumber.toLowerCase().includes(lowerSearch) ||
-      (contract.clientName && contract.clientName.toLowerCase().includes(lowerSearch))
+      (contract.clientName && contract.clientName.toLowerCase().includes(lowerSearch)) ||
+      (anyC.contactPerson && anyC.contactPerson.toLowerCase().includes(lowerSearch)) ||
+      (anyC.designation && anyC.designation.toLowerCase().includes(lowerSearch)) ||
+      (anyC.salesInCharge && anyC.salesInCharge.toLowerCase().includes(lowerSearch)) ||
+      (anyC.contactNumber && anyC.contactNumber.toLowerCase().includes(lowerSearch)) ||
+      (anyC.contactEmail && anyC.contactEmail.toLowerCase().includes(lowerSearch))
     );
   });
 
@@ -308,6 +329,11 @@ export default function ContractsList() {
       endDate: (routeType === "SIS" ? addYearsStr(todayStr(), 3) : nextYearStr()),
       value: "",
       description: "",
+      contactPerson: "",
+      designation: "",
+      contactNumber: "",
+      contactEmail: "",
+      salesInCharge: "",
     });
     clearSelectedFile();
   }
@@ -328,7 +354,7 @@ export default function ContractsList() {
     }
   }
 
-  const isAddValid = newRow.title && newRow.contractNumber && newRow.clientName && newRow.value;
+  const isAddValid = Boolean(newRow.contractNumber.trim() && newRow.clientName.trim());
   const nameSuggestions = matchSuggestions(newRow.title, newRow.type);
 
   /**
@@ -487,16 +513,18 @@ export default function ContractsList() {
               <TableHeader>
                 <TableRow className="bg-muted/10 hover:bg-muted/10">
                   <TableHead className="w-[40px]" aria-label="Selection" />
-                  <TableHead className="w-[120px] whitespace-nowrap">Contract No.</TableHead>
-                  <TableHead>Contract Name</TableHead>
-                  <TableHead className="hidden md:table-cell">Client</TableHead>
-                  <TableHead className="hidden sm:table-cell">Type</TableHead>
-                  <TableHead className="hidden lg:table-cell text-center">Month</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Value</TableHead>
-                  <TableHead className="text-center min-w-[120px]">Created By</TableHead>
-                  <TableHead className="w-[180px]">Doc</TableHead>
-                  <TableHead className="w-[110px]"></TableHead>
+                  <TableHead className="w-[130px] whitespace-nowrap">Ref No.</TableHead>
+                  <TableHead className="min-w-[170px]">Company Name</TableHead>
+                  <TableHead className="min-w-[190px]">Services</TableHead>
+                  <TableHead className="min-w-[140px]">Contact Person</TableHead>
+                  <TableHead className="min-w-[130px] hidden md:table-cell">Designation</TableHead>
+                  <TableHead className="min-w-[120px] hidden lg:table-cell">Contact</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">Price / Rates</TableHead>
+                  <TableHead className="min-w-[110px] hidden sm:table-cell">Sales In Charge</TableHead>
+                  <TableHead className="w-[85px] hidden xl:table-cell">Type</TableHead>
+                  <TableHead className="w-[90px]">Status</TableHead>
+                  <TableHead className="w-[120px] hidden lg:table-cell">Doc</TableHead>
+                  <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -505,18 +533,28 @@ export default function ContractsList() {
                     <TableCell className="w-[40px]" />
                     <TableCell>
                       <Input
-                        placeholder="CN-001"
-                        aria-label="Contract Number"
+                        placeholder="Ref# 2026-..."
+                        aria-label="Reference Number"
                         className="h-8 text-xs font-mono"
                         value={newRow.contractNumber}
                         onChange={e => handleCellChange("contractNumber", e.target.value)}
                         onKeyDown={handleAddRowKey}
                       />
                     </TableCell>
+                    <TableCell>
+                      <Input
+                        placeholder="Company name"
+                        aria-label="Company Name"
+                        className="h-8 text-xs"
+                        value={newRow.clientName}
+                        onChange={e => handleCellChange("clientName", e.target.value)}
+                        onKeyDown={handleAddRowKey}
+                      />
+                    </TableCell>
                     <TableCell className="relative">
                       <Input
-                        placeholder={newRow.type === "SIS" ? "e.g. ISO 9001:2015 Certification" : "e.g. Internal Auditor Training"}
-                        aria-label="Contract Name"
+                        placeholder={newRow.type === "SIS" ? "e.g. ISO 9001:2015 Certification" : "e.g. Overview Training Course"}
+                        aria-label="Services"
                         className="h-8 text-xs"
                         value={newRow.title}
                         onChange={e => { handleCellChange("title", e.target.value); setShowNameSuggestions(true); }}
@@ -546,17 +584,61 @@ export default function ContractsList() {
                         </div>
                       )}
                     </TableCell>
+                    <TableCell>
+                      <Input
+                        placeholder="Contact person"
+                        aria-label="Contact Person"
+                        className="h-8 text-xs"
+                        value={newRow.contactPerson}
+                        onChange={e => handleCellChange("contactPerson", e.target.value)}
+                        onKeyDown={handleAddRowKey}
+                      />
+                    </TableCell>
                     <TableCell className="hidden md:table-cell">
                       <Input
-                        placeholder="Client name"
-                        aria-label="Client Name"
+                        placeholder="Designation"
+                        aria-label="Designation"
                         className="h-8 text-xs"
-                        value={newRow.clientName}
-                        onChange={e => handleCellChange("clientName", e.target.value)}
+                        value={newRow.designation}
+                        onChange={e => handleCellChange("designation", e.target.value)}
+                        onKeyDown={handleAddRowKey}
+                      />
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      <Input
+                        placeholder="Contact no."
+                        aria-label="Contact Number"
+                        className="h-8 text-xs"
+                        value={newRow.contactNumber}
+                        onChange={e => handleCellChange("contactNumber", e.target.value)}
+                        onKeyDown={handleAddRowKey}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        inputMode="decimal"
+                        placeholder="0.00"
+                        aria-label="Price"
+                        className="h-8 text-xs text-right tabular-nums"
+                        value={newRow.value}
+                        onChange={e => handleCellChange("value", e.target.value)}
                         onKeyDown={handleAddRowKey}
                       />
                     </TableCell>
                     <TableCell className="hidden sm:table-cell">
+                      <Input
+                        placeholder="Sales in charge"
+                        aria-label="Sales In Charge"
+                        className="h-8 text-xs"
+                        value={newRow.salesInCharge}
+                        onChange={e => handleCellChange("salesInCharge", e.target.value)}
+                        onKeyDown={handleAddRowKey}
+                      />
+                    </TableCell>
+                    <TableCell className="hidden xl:table-cell">
                       {isTypeRoute ? (
                         <div className="h-8 px-2 flex items-center text-xs font-mono text-muted-foreground rounded-md bg-muted">
                           {routeType}
@@ -571,53 +653,18 @@ export default function ContractsList() {
                         </Select>
                       )}
                     </TableCell>
-                    <TableCell className="hidden lg:table-cell">
-                      <div className="flex flex-col gap-1">
-                        <Input
-                          type="date"
-                          aria-label="Start Date"
-                          className="h-7 text-xs"
-                          value={newRow.startDate}
-                          onChange={e => handleCellChange("startDate", e.target.value)}
-                        />
-                        <Input
-                          type="date"
-                          aria-label="End Date"
-                          className="h-7 text-xs"
-                          value={newRow.endDate}
-                          onChange={e => handleCellChange("endDate", e.target.value)}
-                        />
-                      </div>
-                    </TableCell>
                     <TableCell>
                       <Select value={newRow.status} onValueChange={v => handleCellChange("status", v)}>
                         <SelectTrigger className="h-8 text-xs" aria-label="Status"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="pending">Pending</SelectItem>
                           <SelectItem value="active">Active</SelectItem>
+                          <SelectItem value="pending">Pending</SelectItem>
                           <SelectItem value="completed">Completed</SelectItem>
                           <SelectItem value="expired">Expired</SelectItem>
                         </SelectContent>
                       </Select>
                     </TableCell>
-                    <TableCell>
-                      <Input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        inputMode="decimal"
-                        placeholder="0.00"
-                        aria-label="Value"
-                        className="h-8 text-xs text-right tabular-nums"
-                        value={newRow.value}
-                        onChange={e => handleCellChange("value", e.target.value)}
-                        onKeyDown={handleAddRowKey}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-xs text-muted-foreground italic">—</span>
-                    </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden lg:table-cell">
                       <input
                         ref={fileInputRef}
                         type="file"
@@ -643,7 +690,7 @@ export default function ContractsList() {
                           onClick={() => fileInputRef.current?.click()}
                         >
                           <Icon name="paperclip" className="mr-1" size={13} />
-                          Attach file
+                          Attach
                         </Button>
                       )}
                     </TableCell>
@@ -653,7 +700,7 @@ export default function ContractsList() {
                           size="icon"
                           variant="ghost"
                           aria-label="Save contract"
-                          title={isAddValid ? "Save contract" : "Fill in Contract Name, Number, Client and Value"}
+                          title={isAddValid ? "Save contract" : "Fill in Reference Number and Company Name"}
                           className="h-7 w-7 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
                           disabled={!isAddValid || createMutation.isPending}
                           onClick={() => createMutation.mutate()}
@@ -678,25 +725,22 @@ export default function ContractsList() {
                     <TableRow key={i}>
                       <TableCell><Skeleton className="h-4 w-4" /></TableCell>
                       <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                      <TableCell>
-                        <div className="space-y-2">
-                          <Skeleton className="h-5 w-48" />
-                          <Skeleton className="h-3 w-32 hidden sm:block" />
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-32" /></TableCell>
-                      <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-12" /></TableCell>
-                      <TableCell className="hidden lg:table-cell"><Skeleton className="h-5 w-16 mx-auto" /></TableCell>
-                      <TableCell><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
-                      <TableCell className="text-right"><Skeleton className="h-4 w-20 ml-auto" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                      <TableCell><Skeleton className="h-8 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-36" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-44" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-28" /></TableCell>
+                      <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
+                      <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
+                      <TableCell className="text-right"><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
+                      <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
+                      <TableCell className="hidden xl:table-cell"><Skeleton className="h-5 w-12" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-16 rounded-full" /></TableCell>
+                      <TableCell className="hidden lg:table-cell"><Skeleton className="h-8 w-20" /></TableCell>
                       <TableCell><Skeleton className="h-8 w-8 rounded-md" /></TableCell>
                     </TableRow>
                   ))
                 ) : filteredContracts?.length === 0 && !showAddRow ? (
                   <TableRow>
-                    <TableCell colSpan={11} className="h-48 text-center text-muted-foreground">
+                    <TableCell colSpan={13} className="h-48 text-center text-muted-foreground">
                       <div className="flex flex-col items-center justify-center">
                         <Icon name="file-text" className="opacity-20 mb-4" size={40} />
                         <p>No contracts found matching your criteria.</p>
@@ -725,42 +769,42 @@ export default function ContractsList() {
                           aria-label={`Select ${contract.title}`}
                         />
                       </TableCell>
-                      <TableCell className="font-mono text-xs font-medium text-muted-foreground break-words">
+                      <TableCell className="font-mono text-xs font-semibold text-foreground whitespace-nowrap">
                         {contract.contractNumber}
                       </TableCell>
 
-                      <TableCell className="min-w-[220px]">
-                        <div className="font-medium text-foreground break-words">{contract.title}</div>
+                      <TableCell className="min-w-[170px]">
+                        <div className="font-medium text-foreground break-words">{contract.clientName || <span className="text-muted-foreground italic">—</span>}</div>
                       </TableCell>
-                      <TableCell className="hidden md:table-cell min-w-[160px]">
-                        <div className="break-words">{contract.clientName || <span className="text-muted-foreground italic">Unspecified</span>}</div>
+                      <TableCell className="min-w-[190px]">
+                        <div className="text-sm text-foreground break-words">{contract.title}</div>
                       </TableCell>
-                      <TableCell className="hidden sm:table-cell">
+                      <TableCell className="min-w-[140px]">
+                        <div className="text-sm font-medium text-foreground">{(contract as any).contactPerson || <span className="text-muted-foreground italic">—</span>}</div>
+                      </TableCell>
+                      <TableCell className="min-w-[130px] hidden md:table-cell">
+                        <div className="text-xs text-muted-foreground break-words">{(contract as any).designation || <span className="italic">—</span>}</div>
+                      </TableCell>
+                      <TableCell className="min-w-[120px] hidden lg:table-cell">
+                        <div className="flex flex-col text-xs text-muted-foreground">
+                          {(contract as any).contactNumber && <span className="font-mono text-[11px]">{(contract as any).contactNumber}</span>}
+                          {(contract as any).contactEmail && <span className="text-[11px] truncate text-primary/80">{(contract as any).contactEmail}</span>}
+                          {!((contract as any).contactNumber || (contract as any).contactEmail) && <span className="italic">—</span>}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right font-medium tabular whitespace-nowrap">
+                        {formatCurrency(contract.value) ?? <span className="text-muted-foreground italic">—</span>}
+                      </TableCell>
+                      <TableCell className="min-w-[110px] hidden sm:table-cell">
+                        <span className="text-xs font-medium text-foreground/80">{(contract as any).salesInCharge || (contract as any).assignedTo || <span className="text-muted-foreground italic">—</span>}</span>
+                      </TableCell>
+                      <TableCell className="hidden xl:table-cell">
                         {getTypeBadge(contract.type)}
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell text-center">
-                        <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
-                          {contract.startDate && !isNaN(new Date(contract.startDate).getTime())
-                            ? format(new Date(contract.startDate), "MMMM yyyy")
-                            : <span className="italic">—</span>}
-                        </span>
                       </TableCell>
                       <TableCell>
                         {getStatusBadge(contract.status)}
                       </TableCell>
-                      <TableCell className="text-right font-medium tabular">
-                        {formatCurrency(contract.value) ?? <span className="text-muted-foreground italic">—</span>}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex justify-center">
-                          {(contract as any).createdByName ? (
-                            <UserAvatar name={(contract as any).createdByName} photoUrl={(contract as any).createdByPhotoUrl} className="h-8 w-8" fallbackClassName="bg-primary/10 text-primary text-xs font-semibold" />
-                          ) : (
-                            <span className="text-xs text-muted-foreground italic">—</span>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden lg:table-cell">
                         <DocPreview contract={contract as any} />
                       </TableCell>
                       <TableCell>

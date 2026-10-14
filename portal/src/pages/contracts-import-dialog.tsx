@@ -28,14 +28,19 @@ const CONTRACT_STATUSES = ["active", "pending", "completed", "expired"];
  * punctuation and wording ("Contract No.", "CLIENT", "Start (inclusive)").
  */
 export const CONTRACT_IMPORT_FIELDS: ImportFieldDef[] = [
-  { key: "title", label: "Contract Name", required: true, aliases: ["contract name", "contract", "title", "name", "service", "training", "description of services"] },
-  { key: "contractNumber", label: "Contract Number", required: true, aliases: ["contract number", "contract no", "contractno", "contractnumber", "number", "ref no", "reference number", "cn"] },
-  { key: "clientName", label: "Client Name", required: true, aliases: ["client name", "client", "clientname", "company", "company name", "customer"] },
+  { key: "contractNumber", label: "Reference Number", required: true, aliases: ["reference number", "ref#", "ref no", "ref number", "contract number", "contract no", "contractno", "contractnumber", "number", "cn"] },
+  { key: "clientName", label: "Company Name", required: true, aliases: ["company name", "company", "client name", "client", "customer"] },
+  { key: "title", label: "Services", aliases: ["services", "service", "contract name", "contract", "title", "name", "training", "description of services"] },
+  { key: "contactPerson", label: "Contact Person", aliases: ["contact person", "contact", "person", "contact name", "representative"] },
+  { key: "designation", label: "Designation", aliases: ["designation", "position", "title", "role", "job title"] },
+  { key: "contactEmail", label: "Email Address", aliases: ["email address", "email", "e-mail", "mail"] },
+  { key: "contactNumber", label: "Contact Number", aliases: ["contact number", "contact no", "contact #", "phone", "telephone", "mobile", "phone number", "tel no", "tel #"] },
+  { key: "value", label: "Price/ Rates", aliases: ["price/ rates", "price / rates", "price/rates", "price", "rates", "rate", "value", "contract value", "amount", "total", "fee", "cost"] },
+  { key: "salesInCharge", label: "Sales In Charge", aliases: ["sales in charge", "sales in-charge", "sales", "in charge", "assigned to", "agent", "account executive", "rep"] },
   { key: "type", label: "Type", aliases: ["type", "business unit", "unit", "company type"] },
   { key: "status", label: "Status", aliases: ["status", "stage", "contract status"] },
   { key: "startDate", label: "Start Date", aliases: ["start date", "startdate", "start", "date start", "effective date", "from"] },
   { key: "endDate", label: "End Date", aliases: ["end date", "enddate", "end", "expiry", "expiration", "expiration date", "until", "to"] },
-  { key: "value", label: "Value (₱)", required: true, aliases: ["value", "contract value", "amount", "total", "total value", "price", "contract amount", "fee"] },
   { key: "description", label: "Remarks", aliases: ["remarks", "description", "notes", "note", "comments", "terms"] },
 ];
 
@@ -51,6 +56,11 @@ interface PreviewRow {
     startDate: string;
     endDate: string;
     value: number | null;
+    contactPerson?: string | null;
+    designation?: string | null;
+    contactNumber?: string | null;
+    contactEmail?: string | null;
+    salesInCharge?: string | null;
   };
   errors: string[];
   duplicate: boolean;
@@ -65,14 +75,19 @@ interface PreviewResponse {
 
 export function downloadContractsTemplate() {
   downloadImportTemplate("contracts-template.xlsx", "Contracts", CONTRACT_IMPORT_FIELDS, {
-    "Contract Name": "ISO 9001:2015 Certification",
-    "Contract Number": "CN-2026-001",
-    "Client Name": "Example Corporation",
-    "Type": "SIS",
+    "Reference Number": "Ref# 2026-0106-01",
+    "Company Name": "Example Corporation",
+    "Services": "ISO 9001:2026 Overview Training Course",
+    "Contact Person": "MS. AIZA GUERINA",
+    "Designation": "DOCUMENTATION OFFICER",
+    "Email Address": "aiza@example.com",
+    "Contact Number": "8521-4975",
+    "Price/ Rates": 30000,
+    "Sales In Charge": "Alexa",
+    "Type": "JMCS",
     "Status": "active",
     "Start Date": new Date(),
     "End Date": new Date(),
-    "Value (₱)": 125000,
     "Remarks": "",
   });
 }
@@ -116,11 +131,10 @@ export default function ContractsImportDialog({
     setLoading(true);
     setPreview(null);
     try {
-      // The template pre-fills dates and a value, so untouched rows look
-      // non-empty. A row is only real once it names the contract or a client.
+      // A row is valid once it has a reference/contract number and a company/client name or services.
       const hasContent = (item: Record<string, unknown>) =>
-        String(item.title ?? "").trim() !== "" ||
-        String(item.clientName ?? "").trim() !== "";
+        String(item.contractNumber ?? "").trim() !== "" &&
+        (String(item.clientName ?? "").trim() !== "" || String(item.title ?? "").trim() !== "");
 
       const result = await readSheetIntoFields(file, CONTRACT_IMPORT_FIELDS, hasContent);
       if ("empty" in result) {
@@ -322,15 +336,15 @@ export default function ContractsImportDialog({
                     <TableRow className="bg-muted/10">
                       <TableHead className="w-[40px]"></TableHead>
                       <TableHead className="w-[50px]">Row</TableHead>
-                      <TableHead className="min-w-[190px]">Contract Name</TableHead>
-                      <TableHead className="min-w-[110px]">Number</TableHead>
-                      <TableHead className="min-w-[150px]">Client</TableHead>
-                      <TableHead className="w-[80px]">Type</TableHead>
-                      <TableHead className="w-[100px]">Status</TableHead>
-                      <TableHead className="w-[110px]">Start</TableHead>
-                      <TableHead className="w-[110px]">End</TableHead>
-                      <TableHead className="w-[120px] text-right">Value</TableHead>
-                      <TableHead className="min-w-[180px]">Issues</TableHead>
+                      <TableHead className="min-w-[130px]">Ref No.</TableHead>
+                      <TableHead className="min-w-[170px]">Company Name</TableHead>
+                      <TableHead className="min-w-[180px]">Services</TableHead>
+                      <TableHead className="min-w-[140px]">Contact Person</TableHead>
+                      <TableHead className="min-w-[130px]">Designation</TableHead>
+                      <TableHead className="w-[110px] text-right">Price / Rates</TableHead>
+                      <TableHead className="w-[120px]">Sales In Charge</TableHead>
+                      <TableHead className="w-[85px]">Status</TableHead>
+                      <TableHead className="min-w-[160px]">Issues</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -349,20 +363,14 @@ export default function ContractsImportDialog({
                             />
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground">{row.rowNumber}</TableCell>
-                          <TableCell className="font-medium text-sm">{c.title || "—"}</TableCell>
-                          <TableCell className="font-mono text-xs">{c.contractNumber || "—"}</TableCell>
-                          <TableCell className="text-sm">{c.clientName || "—"}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className="font-mono text-[10px]">{c.type}</Badge>
-                          </TableCell>
-                          <TableCell className="capitalize text-sm">{c.status}</TableCell>
-                          <TableCell className="text-xs text-muted-foreground">
-                            {c.startDate ? format(new Date(`${c.startDate}T00:00:00`), "MMM d, yyyy") : "—"}
-                          </TableCell>
-                          <TableCell className="text-xs text-muted-foreground">
-                            {c.endDate ? format(new Date(`${c.endDate}T00:00:00`), "MMM d, yyyy") : "—"}
-                          </TableCell>
-                          <TableCell className="text-right text-sm tabular-nums">{money(c.value)}</TableCell>
+                          <TableCell className="font-mono text-xs font-semibold">{c.contractNumber || "—"}</TableCell>
+                          <TableCell className="text-sm font-medium">{c.clientName || "—"}</TableCell>
+                          <TableCell className="text-sm">{c.title || <span className="text-muted-foreground italic">General Services</span>}</TableCell>
+                          <TableCell className="text-xs">{c.contactPerson || "—"}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground">{c.designation || "—"}</TableCell>
+                          <TableCell className="text-right text-sm tabular-nums font-medium">{money(c.value)}</TableCell>
+                          <TableCell className="text-xs">{c.salesInCharge || "—"}</TableCell>
+                          <TableCell className="capitalize text-xs">{c.status}</TableCell>
                           <TableCell className="text-xs">
                             {row.errors.length > 0 ? (
                               <span className="text-red-600">{row.errors.join("; ")}</span>

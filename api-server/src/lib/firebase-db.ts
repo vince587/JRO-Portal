@@ -78,6 +78,11 @@ export interface ContractDoc {
   value: number;
   description: string | null;
   assignedTo: string | null;
+  contactPerson?: string | null;
+  designation?: string | null;
+  contactNumber?: string | null;
+  contactEmail?: string | null;
+  salesInCharge?: string | null;
   createdById: string | null;
   createdByName: string | null;
   createdByPhotoUrl: string | null;
