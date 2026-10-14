@@ -53,6 +53,7 @@ function mapContract(c: ContractDoc) {
     designation: c.designation ?? null,
     contactNumber: c.contactNumber ?? null,
     contactEmail: c.contactEmail ?? null,
+    translatedToSales: Boolean(c.translatedToSales),
     createdById: c.createdById,
     createdByName: c.createdByName,
     createdByPhotoUrl: c.createdByPhotoUrl ?? null,
@@ -126,6 +127,7 @@ router.post("/contracts", requirePermission("canManageContracts"), async (req, r
     contactNumber: (req.body as any).contactNumber ? cleanText((req.body as any).contactNumber) : null,
     contactEmail: (req.body as any).contactEmail ? cleanText((req.body as any).contactEmail) : null,
     salesInCharge: (req.body as any).salesInCharge ? cleanText((req.body as any).salesInCharge) : ((req.body as any).assignedTo ? cleanText((req.body as any).assignedTo) : null),
+    translatedToSales: Boolean((req.body as any).translatedToSales),
     createdAt: now,
     updatedAt: now,
   } as ContractDoc);
@@ -177,6 +179,7 @@ router.patch("/contracts/:id", requirePermission("canManageContracts"), async (r
   if ((req.body as any).contactNumber !== undefined) updateData.contactNumber = (req.body as any).contactNumber ? cleanText((req.body as any).contactNumber) : null;
   if ((req.body as any).contactEmail !== undefined) updateData.contactEmail = (req.body as any).contactEmail ? cleanText((req.body as any).contactEmail) : null;
   if ((req.body as any).salesInCharge !== undefined) updateData.salesInCharge = (req.body as any).salesInCharge ? cleanText((req.body as any).salesInCharge) : null;
+  if ((req.body as any).translatedToSales !== undefined) updateData.translatedToSales = Boolean((req.body as any).translatedToSales);
   await updateDoc("contracts", id, updateData);
   const updated = await getDoc<ContractDoc>("contracts", id);
   await createDoc("activity", {
@@ -477,6 +480,7 @@ router.post("/contracts/import", requirePermission("canManageContracts"), async 
       contactEmail: c.contactEmail,
       salesInCharge: c.salesInCharge,
       assignedTo: c.salesInCharge || null,
+      translatedToSales: false,
       createdById: user.id,
       createdByName: creatorName,
       createdByPhotoUrl: user.photoUrl ?? null,

@@ -156,6 +156,7 @@ export default function ContractsList() {
     contactNumber: "",
     contactEmail: "",
     salesInCharge: "",
+    translatedToSales: false,
   });
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -254,6 +255,7 @@ export default function ContractsList() {
           contactNumber: newRow.contactNumber || undefined,
           contactEmail: newRow.contactEmail || undefined,
           salesInCharge: newRow.salesInCharge || undefined,
+          translatedToSales: newRow.translatedToSales,
         }),
       });
       if (!res.ok) {
@@ -292,6 +294,7 @@ export default function ContractsList() {
         contactNumber: "",
         contactEmail: "",
         salesInCharge: "",
+        translatedToSales: false,
       });
       clearSelectedFile();
       toast({ title: "Contract created" });
@@ -334,11 +337,12 @@ export default function ContractsList() {
       contactNumber: "",
       contactEmail: "",
       salesInCharge: "",
+      translatedToSales: false,
     });
     clearSelectedFile();
   }
 
-  function handleCellChange(field: string, value: string) {
+  function handleCellChange(field: string, value: any) {
     setNewRow(prev => {
       const next = { ...prev, [field]: value };
       if (field === "type") {
@@ -380,6 +384,128 @@ export default function ContractsList() {
       {type}
     </Badge>
   );
+
+  // Inline cell editing state
+  const [editingCell, setEditingCell] = useState<{ id: string | number; field: string } | null>(null);
+  const [editValue, setEditValue] = useState<string>("");
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string | number; data: Record<string, any> }) => {
+      const res = await fetch(`/api/contracts/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to update contract");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: getListContractsQueryKey() });
+      queryClient.invalidateQueries({ queryKey: ["contracts-analysis"] });
+      setEditingCell(null);
+      toast({ title: "Contract updated" });
+    },
+    onError: (e: Error) => {
+      toast({ title: "Failed to update", description: e.message, variant: "destructive" });
+    },
+  });
+
+  function startCellEdit(id: string | number, field: string, initialValue: any) {
+    if (!canManageContracts) return;
+    setEditingCell({ id, field });
+    setEditValue(initialValue !== null && initialValue !== undefined ? String(initialValue) : "");
+  }
+
+  function saveCellEdit(id: string | number, field: string, originalValue: any) {
+    if (!editingCell || editingCell.id !== id || editingCell.field !== field) return;
+    const finalVal = field === "value" ? Number(editValue) || 0 : editValue.trim();
+    const origVal = field === "value" ? Number(originalValue) || 0 : String(originalValue ?? "").trim();
+    if (String(finalVal) !== String(origVal)) {
+      updateMutation.mutate({ id, data: { [field]: finalVal } });
+    } else {
+      setEditingCell(null);
+    }
+  }
+
+  function handleToggleSales(id: string | number, currentValue: boolean) {
+    if (!canManageContracts) return;
+    updateMutation.mutate(
+      { id, data: { translatedToSales: !currentValue } },
+      {
+        onSuccess: () => {
+          toast({
+            title: !currentValue ? "Marked as translated to sales" : "Removed from sales",
+          });
+        },
+      }
+    );
+  }
+
+  function EditableCell({
+    contractId,
+    field,
+    value,
+    displayValue,
+    placeholder = "—",
+    className = "",
+    mono = false,
+    numeric = false,
+  }: {
+    contractId: string | number;
+    field: string;
+    value: any;
+    displayValue?: React.ReactNode;
+    placeholder?: string;
+    className?: string;
+    mono?: boolean;
+    numeric?: boolean;
+  }) {
+    const isEditing = editingCell?.id === contractId && editingCell?.field === field;
+
+    if (isEditing) {
+      return (
+        <Input
+          autoFocus
+          type={numeric ? "number" : "text"}
+          min={numeric ? "0" : undefined}
+          step={numeric ? "0.01" : undefined}
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          onBlur={() => saveCellEdit(contractId, field, value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") saveCellEdit(contractId, field, value);
+            if (e.key === "Escape") setEditingCell(null);
+          }}
+          className={`h-7 text-xs ${mono ? "font-mono" : ""} ${numeric ? "text-right tabular-nums" : ""} w-full min-w-[70px] bg-background`}
+        />
+      );
+    }
+
+    return (
+      <div
+        onClick={(e) => {
+          e.stopPropagation();
+          startCellEdit(contractId, field, value);
+        }}
+        title={canManageContracts ? "Click to edit" : undefined}
+        className={`group/cell relative inline-flex items-center gap-1 rounded px-1.5 py-1 -mx-1.5 transition-all max-w-full ${
+          canManageContracts ? "cursor-pointer hover:bg-muted/70 hover:ring-1 hover:ring-border/80" : ""
+        } ${className}`}
+      >
+        <span className="truncate">{displayValue ?? (value || <span className="text-muted-foreground italic">{placeholder}</span>)}</span>
+        {canManageContracts && (
+          <Icon
+            name="edit-2"
+            size={11}
+            className="opacity-0 group-hover/cell:opacity-60 text-muted-foreground shrink-0 transition-opacity ml-0.5"
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="page-enter space-y-6">
@@ -520,6 +646,12 @@ export default function ContractsList() {
                   <TableHead className="min-w-[130px] hidden md:table-cell">Designation</TableHead>
                   <TableHead className="min-w-[120px] hidden lg:table-cell">Contact</TableHead>
                   <TableHead className="text-right whitespace-nowrap">Price / Rates</TableHead>
+                  <TableHead className="w-[80px] text-center whitespace-nowrap">
+                    <span className="flex items-center justify-center gap-1" title="Translates to Sales">
+                      <Icon name="trending-up" size={13} className="text-emerald-600" />
+                      Sales?
+                    </span>
+                  </TableHead>
                   <TableHead className="min-w-[110px] hidden sm:table-cell">Sales In Charge</TableHead>
                   <TableHead className="w-[85px] hidden xl:table-cell">Type</TableHead>
                   <TableHead className="w-[90px]">Status</TableHead>
@@ -628,6 +760,16 @@ export default function ContractsList() {
                         onKeyDown={handleAddRowKey}
                       />
                     </TableCell>
+                    <TableCell className="text-center w-[80px]">
+                      <div className="flex items-center justify-center">
+                        <Checkbox
+                          checked={newRow.translatedToSales}
+                          onCheckedChange={(checked) => handleCellChange("translatedToSales", Boolean(checked))}
+                          aria-label="Translates to sales"
+                          className="data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600"
+                        />
+                      </div>
+                    </TableCell>
                     <TableCell className="hidden sm:table-cell">
                       <Input
                         placeholder="Sales in charge"
@@ -731,6 +873,7 @@ export default function ContractsList() {
                       <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
                       <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
                       <TableCell className="text-right"><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
+                      <TableCell className="text-center"><Skeleton className="h-4 w-4 mx-auto" /></TableCell>
                       <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
                       <TableCell className="hidden xl:table-cell"><Skeleton className="h-5 w-12" /></TableCell>
                       <TableCell><Skeleton className="h-5 w-16 rounded-full" /></TableCell>
@@ -740,7 +883,7 @@ export default function ContractsList() {
                   ))
                 ) : filteredContracts?.length === 0 && !showAddRow ? (
                   <TableRow>
-                    <TableCell colSpan={13} className="h-48 text-center text-muted-foreground">
+                    <TableCell colSpan={14} className="h-48 text-center text-muted-foreground">
                       <div className="flex flex-col items-center justify-center">
                         <Icon name="file-text" className="opacity-20 mb-4" size={40} />
                         <p>No contracts found matching your criteria.</p>
@@ -769,40 +912,157 @@ export default function ContractsList() {
                           aria-label={`Select ${contract.title}`}
                         />
                       </TableCell>
-                      <TableCell className="font-mono text-xs font-semibold text-foreground whitespace-nowrap">
-                        {contract.contractNumber}
+                      <TableCell className="font-mono text-xs font-semibold whitespace-nowrap">
+                        <EditableCell
+                          contractId={contract.id}
+                          field="contractNumber"
+                          value={contract.contractNumber}
+                          mono
+                        />
                       </TableCell>
 
                       <TableCell className="min-w-[170px]">
-                        <div className="font-medium text-foreground break-words">{contract.clientName || <span className="text-muted-foreground italic">—</span>}</div>
+                        <EditableCell
+                          contractId={contract.id}
+                          field="clientName"
+                          value={contract.clientName}
+                          className="font-medium text-foreground"
+                        />
                       </TableCell>
                       <TableCell className="min-w-[190px]">
-                        <div className="text-sm text-foreground break-words">{contract.title}</div>
+                        <EditableCell
+                          contractId={contract.id}
+                          field="title"
+                          value={contract.title}
+                          className="text-sm text-foreground"
+                        />
                       </TableCell>
                       <TableCell className="min-w-[140px]">
-                        <div className="text-sm font-medium text-foreground">{(contract as any).contactPerson || <span className="text-muted-foreground italic">—</span>}</div>
+                        <EditableCell
+                          contractId={contract.id}
+                          field="contactPerson"
+                          value={(contract as any).contactPerson}
+                          className="text-sm font-medium text-foreground"
+                        />
                       </TableCell>
                       <TableCell className="min-w-[130px] hidden md:table-cell">
-                        <div className="text-xs text-muted-foreground break-words">{(contract as any).designation || <span className="italic">—</span>}</div>
+                        <EditableCell
+                          contractId={contract.id}
+                          field="designation"
+                          value={(contract as any).designation}
+                          className="text-xs text-muted-foreground"
+                        />
                       </TableCell>
                       <TableCell className="min-w-[120px] hidden lg:table-cell">
-                        <div className="flex flex-col text-xs text-muted-foreground">
-                          {(contract as any).contactNumber && <span className="font-mono text-[11px]">{(contract as any).contactNumber}</span>}
-                          {(contract as any).contactEmail && <span className="text-[11px] truncate text-primary/80">{(contract as any).contactEmail}</span>}
-                          {!((contract as any).contactNumber || (contract as any).contactEmail) && <span className="italic">—</span>}
-                        </div>
+                        <EditableCell
+                          contractId={contract.id}
+                          field="contactNumber"
+                          value={(contract as any).contactNumber}
+                          mono
+                          displayValue={
+                            <div className="flex flex-col text-xs text-muted-foreground text-left">
+                              {(contract as any).contactNumber ? (
+                                <span className="font-mono text-[11px]">{(contract as any).contactNumber}</span>
+                              ) : (
+                                <span className="italic">—</span>
+                              )}
+                              {(contract as any).contactEmail && (
+                                <span className="text-[11px] truncate text-primary/80">{(contract as any).contactEmail}</span>
+                              )}
+                            </div>
+                          }
+                        />
                       </TableCell>
                       <TableCell className="text-right font-medium tabular whitespace-nowrap">
-                        {formatCurrency(contract.value) ?? <span className="text-muted-foreground italic">—</span>}
+                        <EditableCell
+                          contractId={contract.id}
+                          field="value"
+                          value={contract.value}
+                          numeric
+                          displayValue={formatCurrency(contract.value) ?? <span className="text-muted-foreground italic">—</span>}
+                        />
+                      </TableCell>
+                      <TableCell className="text-center w-[80px]">
+                        <div className="flex items-center justify-center">
+                          <Checkbox
+                            checked={Boolean((contract as any).translatedToSales)}
+                            disabled={!canManageContracts || updateMutation.isPending}
+                            onCheckedChange={() => handleToggleSales(contract.id, Boolean((contract as any).translatedToSales))}
+                            aria-label="Translates to sales"
+                            title={Boolean((contract as any).translatedToSales) ? "Translates to sales (click to toggle)" : "Click to mark as translated to sales"}
+                            className="data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600"
+                          />
+                        </div>
                       </TableCell>
                       <TableCell className="min-w-[110px] hidden sm:table-cell">
-                        <span className="text-xs font-medium text-foreground/80">{(contract as any).salesInCharge || (contract as any).assignedTo || <span className="text-muted-foreground italic">—</span>}</span>
+                        <EditableCell
+                          contractId={contract.id}
+                          field="salesInCharge"
+                          value={(contract as any).salesInCharge || (contract as any).assignedTo}
+                          className="text-xs font-medium text-foreground/80"
+                        />
                       </TableCell>
                       <TableCell className="hidden xl:table-cell">
-                        {getTypeBadge(contract.type)}
+                        {editingCell?.id === contract.id && editingCell?.field === "type" ? (
+                          <Select
+                            defaultValue={contract.type}
+                            onValueChange={(v) => {
+                              updateMutation.mutate({ id: contract.id, data: { type: v } });
+                              setEditingCell(null);
+                            }}
+                            open
+                            onOpenChange={(open) => { if (!open) setEditingCell(null); }}
+                          >
+                            <SelectTrigger className="h-7 text-xs w-[85px]"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="JMCS">JMCS</SelectItem>
+                              <SelectItem value="SIS">SIS</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <div
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              startCellEdit(contract.id, "type", contract.type);
+                            }}
+                            title={canManageContracts ? "Click to change type" : undefined}
+                            className={`inline-block ${canManageContracts ? "cursor-pointer hover:opacity-80" : ""}`}
+                          >
+                            {getTypeBadge(contract.type)}
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell>
-                        {getStatusBadge(contract.status)}
+                        {editingCell?.id === contract.id && editingCell?.field === "status" ? (
+                          <Select
+                            defaultValue={contract.status}
+                            onValueChange={(v) => {
+                              updateMutation.mutate({ id: contract.id, data: { status: v } });
+                              setEditingCell(null);
+                            }}
+                            open
+                            onOpenChange={(open) => { if (!open) setEditingCell(null); }}
+                          >
+                            <SelectTrigger className="h-7 text-xs w-[105px]"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="active">Active</SelectItem>
+                              <SelectItem value="pending">Pending</SelectItem>
+                              <SelectItem value="completed">Completed</SelectItem>
+                              <SelectItem value="expired">Expired</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <div
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              startCellEdit(contract.id, "status", contract.status);
+                            }}
+                            title={canManageContracts ? "Click to change status" : undefined}
+                            className={`inline-block ${canManageContracts ? "cursor-pointer hover:opacity-80" : ""}`}
+                          >
+                            {getStatusBadge(contract.status)}
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell className="hidden lg:table-cell">
                         <DocPreview contract={contract as any} />

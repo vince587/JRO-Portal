@@ -83,6 +83,7 @@ export interface ContractDoc {
   contactNumber?: string | null;
   contactEmail?: string | null;
   salesInCharge?: string | null;
+  translatedToSales?: boolean;
   createdById: string | null;
   createdByName: string | null;
   createdByPhotoUrl: string | null;

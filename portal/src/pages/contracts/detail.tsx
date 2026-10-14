@@ -23,6 +23,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -75,6 +76,7 @@ const contractSchema = z.object({
   contactNumber: z.string().optional().nullable(),
   contactEmail: z.string().optional().nullable(),
   salesInCharge: z.string().optional().nullable(),
+  translatedToSales: z.boolean().optional(),
 });
 
 type ContractFormValues = z.infer<typeof contractSchema>;
@@ -137,6 +139,7 @@ export default function ContractDetail() {
       contactNumber: "",
       contactEmail: "",
       salesInCharge: "",
+      translatedToSales: false,
     },
   });
 
@@ -172,6 +175,7 @@ export default function ContractDetail() {
         contactNumber: (contract as any).contactNumber || "",
         contactEmail: (contract as any).contactEmail || "",
         salesInCharge: (contract as any).salesInCharge || contract.assignedTo || "",
+        translatedToSales: Boolean((contract as any).translatedToSales),
       });
     }
   }, [contract, isNew, form]);
@@ -641,6 +645,30 @@ export default function ContractDetail() {
                         <Input {...field} value={field.value || ""} disabled={!isEditing} />
                       </FormControl>
                       <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="translatedToSales"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3">
+                      <FormControl>
+                        <Checkbox
+                          checked={Boolean(field.value)}
+                          onCheckedChange={field.onChange}
+                          disabled={!isEditing}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel className="text-sm font-medium cursor-pointer">
+                          Translates to Sales
+                        </FormLabel>
+                        <p className="text-xs text-muted-foreground">
+                          Check this box if this contract represents a converted sales transaction.
+                        </p>
+                      </div>
                     </FormItem>
                   )}
                 />
