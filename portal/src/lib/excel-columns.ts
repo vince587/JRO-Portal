@@ -128,7 +128,7 @@ export interface SheetReadResult {
 export async function readSheetIntoFields(
   file: File,
   fields: ImportFieldDef[],
-  isRowBlank: (row: Record<string, unknown>) => boolean,
+  hasContent: (row: Record<string, unknown>) => boolean,
 ): Promise<SheetReadResult | { missingRequired: ImportFieldDef[] } | { empty: true }> {
   const buf = await file.arrayBuffer();
   const wb = XLSX.read(buf, { type: "array" });
@@ -146,7 +146,7 @@ export async function readSheetIntoFields(
     return item;
   });
 
-  const rows = mapped.filter(r => !isRowBlank(r));
+  const rows = mapped.filter(r => hasContent(r));
   return {
     mapped: rows,
     headerMap,

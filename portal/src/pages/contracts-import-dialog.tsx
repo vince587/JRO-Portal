@@ -131,10 +131,20 @@ export default function ContractsImportDialog({
     setLoading(true);
     setPreview(null);
     try {
-      // A row is valid once it has a reference/contract number and a company/client name or services.
-      const hasContent = (item: Record<string, unknown>) =>
-        String(item.contractNumber ?? "").trim() !== "" &&
-        (String(item.clientName ?? "").trim() !== "" || String(item.title ?? "").trim() !== "");
+      // A row is valid once it has a reference number or company name, skipping month banner rows.
+      const isMonthHeader = (item: Record<string, unknown>) => {
+        const months = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
+        const num = String(item.contractNumber ?? "").trim().toUpperCase();
+        return months.some(m => num.startsWith(m)) && String(item.clientName ?? "").trim() === "";
+      };
+      const hasContent = (item: Record<string, unknown>) => {
+        if (isMonthHeader(item)) return false;
+        return (
+          String(item.clientName ?? "").trim() !== "" ||
+          String(item.title ?? "").trim() !== "" ||
+          String(item.contractNumber ?? "").trim() !== ""
+        );
+      };
 
       const result = await readSheetIntoFields(file, CONTRACT_IMPORT_FIELDS, hasContent);
       if ("empty" in result) {
