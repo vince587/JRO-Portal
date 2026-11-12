@@ -249,7 +249,10 @@ jobs:
           cat "$DOWNLOADS/installer.json"
 
       - name: Deploy to Firebase Hosting
-        uses: w9jds/firebase-action@master
+        # Pinned: firebase-tools v15.30+ pre-checks/enables the Hosting API,
+        # which fails with a legacy FIREBASE_TOKEN that lacks serviceusage
+        # permissions. v15.26.0 was the last version that deployed reliably.
+        uses: w9jds/firebase-action@v15.26.0
         with:
           args: deploy --only hosting
         env:
