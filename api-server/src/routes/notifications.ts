@@ -2,9 +2,8 @@ import { Router, type IRouter } from "express";
 import { requireAuth } from "../middlewares/auth";
 import {
   getAll, queryWhere,
-  type CertificateDoc, type ContractDoc, type UserDoc, type NotificationDoc,
+  type CertificateDoc, type ContractDoc, type NotificationDoc,
 } from "../lib/firebase-db";
-import { sendExpiryNotifications } from "../lib/mailer";
 
 const router: IRouter = Router();
 
@@ -27,10 +26,9 @@ function daysUntil(dateStr: string): number {
 }
 
 router.get("/notifications", async (_req, res): Promise<void> => {
-  const [certs, contracts, users] = await Promise.all([
+  const [certs, contracts] = await Promise.all([
     getAll<CertificateDoc>("certificates"),
     getAll<ContractDoc>("contracts"),
-    getAll<UserDoc>("users"),
   ]);
 
   const notifications: Array<{
@@ -114,18 +112,8 @@ router.get("/notifications", async (_req, res): Promise<void> => {
     // notifications collection may not exist yet; ignore
   }
 
-  const expiringCerts = certs.filter(c => getCertStatus(c.expiryDate) === "expiring_soon" || getCertStatus(c.expiryDate) === "expired");
-  if (expiringCerts.length > 0 && users.length > 0) {
-    const recipients = users.map(u => ({
-      email: u.email,
-      name: u.fullName || u.email,
-      type: "certificate" as const,
-      title: `${expiringCerts.length} certificate${expiringCerts.length > 1 ? "s" : ""} need attention`,
-      daysUntil: 0,
-      link: "/certificates",
-    }));
-    sendExpiryNotifications(recipients);
-  }
+  // In-app notifications are displayed in the UI notification bell.
+  // Note: Automated email blasting on certificate expiration was removed to avoid consuming Resend/SMTP quota limits.
 
   res.json(notifications);
 });

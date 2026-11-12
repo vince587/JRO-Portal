@@ -89,25 +89,6 @@ export async function sendTemplateEmail(opts: {
   }
 }
 
-export async function sendExpiryNotifications(
-  recipients: Array<{ email: string; name?: string; type?: string; title?: string; daysUntil?: number; link?: string }>,
-): Promise<void> {
-  const t = getTransporter();
-  if (!t) return;
-  for (const r of recipients) {
-    try {
-      await t.sendMail({
-        from: fromAddress(),
-        to: r.email,
-        subject: r.title || "JMCS Portal — items need your attention",
-        text: `${r.name ? r.name + "\n" : ""}${r.title || "Items need your attention"}\n${r.link ? "View: " + r.link : ""}`,
-      });
-    } catch (e) {
-      logger.error({ err: e, email: r.email }, "sendExpiryNotifications failed");
-    }
-  }
-}
-
 export async function sendAccessEmail(opts: {
   to: string;
   title: string;
